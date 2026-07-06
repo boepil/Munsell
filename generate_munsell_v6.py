@@ -81,6 +81,7 @@ html_template = """<!DOCTYPE html>
         <button id="view-btn">Toggle View (Top / Side)</button>
         <button id="reset-btn" style="margin-bottom: 15px;">Reset Labels</button>
         <button id="toggle-mix-btn" style="margin-bottom: 15px;">Toggle Mix Shape</button>
+        <button id="hide-unpinned-btn" style="margin-bottom: 15px;">Hide Unpinned Pigments</button>
         
         <div style="margin-bottom: 15px;">
             <label>Max Value: <span id="value-label">10</span></label>
@@ -400,6 +401,7 @@ html_template = """<!DOCTYPE html>
                 marker.userData.state.pinned = !marker.userData.state.pinned;
                 marker.userData.updateVisibility();
                 updateMixShape();
+                if (typeof updatePigmentBoxVisibility === 'function') updatePigmentBoxVisibility();
             });
 
             pigmentBoxes.push(marker);
@@ -593,6 +595,7 @@ html_template = """<!DOCTYPE html>
                 marker.userData.state.pinned = !marker.userData.state.pinned;
                 marker.userData.updateVisibility();
                 updateMixShape();
+                if (typeof updatePigmentBoxVisibility === 'function') updatePigmentBoxVisibility();
             }
         });
 
@@ -600,6 +603,7 @@ html_template = """<!DOCTYPE html>
         const viewBtn = document.getElementById('view-btn');
         const resetBtn = document.getElementById('reset-btn');
         const toggleMixBtn = document.getElementById('toggle-mix-btn');
+        const hideUnpinnedBtn = document.getElementById('hide-unpinned-btn');
         const valueSlider = document.getElementById('value-slider');
         const valueLabel = document.getElementById('value-label');
         const transparencySlider = document.getElementById('transparency-slider');
@@ -624,11 +628,29 @@ html_template = """<!DOCTYPE html>
                 marker.userData.updateVisibility();
             });
             updateMixShape();
+            if (typeof updatePigmentBoxVisibility === 'function') updatePigmentBoxVisibility();
         });
 
         toggleMixBtn.addEventListener('click', () => {
             isMixVisible = !isMixVisible;
             updateMixShape();
+        });
+
+        let hideUnpinned = false;
+        function updatePigmentBoxVisibility() {
+            pigmentBoxes.forEach(box => {
+                if (hideUnpinned) {
+                    box.visible = box.userData.state.pinned;
+                } else {
+                    box.visible = true;
+                }
+            });
+        }
+
+        hideUnpinnedBtn.addEventListener('click', () => {
+            hideUnpinned = !hideUnpinned;
+            hideUnpinnedBtn.innerText = hideUnpinned ? "Show Unpinned Pigments" : "Hide Unpinned Pigments";
+            updatePigmentBoxVisibility();
         });
 
         function updateVoxels() {
