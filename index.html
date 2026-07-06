@@ -3336,15 +3336,15 @@
         const hueAnchors = [];
         const anchorData = [
             { label: 'R', h: 0 },
-            { label: 'Y', h: 100 / 6 },
-            { label: 'G', h: 200 / 6 },
+            { label: 'M', h: 100 / 6 },
+            { label: 'B', h: 200 / 6 },
             { label: 'C', h: 300 / 6 },
-            { label: 'B', h: 400 / 6 },
-            { label: 'M', h: 500 / 6 }
+            { label: 'G', h: 400 / 6 },
+            { label: 'Y', h: 500 / 6 }
         ];
 
         anchorData.forEach(data => {
-            const theta = (data.h * 3.6) * (Math.PI / 180);
+            const theta = ((data.h * 3.6) - 20) * (Math.PI / 180);
             const radius = 40;
             const x = Math.cos(theta) * radius;
             const z = Math.sin(theta) * radius;
