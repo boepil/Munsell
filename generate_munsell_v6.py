@@ -497,6 +497,20 @@ html_template = """<!DOCTYPE html>
                 geometry.setAttribute('logColor', new THREE.BufferAttribute(logColors, 3));
                 currentMixMesh = new THREE.Line(geometry, mixLineMaterial);
                 mixGroup.add(currentMixMesh);
+            } else if (pinned.length === 3) {
+                const geometry = new THREE.BufferGeometry().setFromPoints(points);
+                const logColors = new Float32Array(9);
+                
+                for (let i = 0; i < 3; i++) {
+                    const c = logColorsMap.get(`${points[i].x.toFixed(4)},${points[i].y.toFixed(4)},${points[i].z.toFixed(4)}`);
+                    logColors[i*3] = c[0];
+                    logColors[i*3+1] = c[1];
+                    logColors[i*3+2] = c[2];
+                }
+                
+                geometry.setAttribute('logColor', new THREE.BufferAttribute(logColors, 3));
+                currentMixMesh = new THREE.Mesh(geometry, mixMaterial);
+                mixGroup.add(currentMixMesh);
             } else {
                 const geometry = new ConvexGeometry(points);
                 const posAttr = geometry.attributes.position;
