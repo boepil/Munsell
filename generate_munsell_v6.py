@@ -160,6 +160,7 @@ html_template = """<!DOCTYPE html>
             { name: "Manganese Blue (PB33)", hex: "#1E7FA0" },
             { name: "Cobalt Blue (PB28)", hex: "#1F4FA0" },
             { name: "Ultramarine Blue (PB29)", hex: "#2E2E8F" },
+            { name: "Alizarin Crimson", hex: "#8B1A2B" },
             { name: "Cobalt Violet Deep (PV14)", hex: "#6A3F8F" }
         ];
 
@@ -525,7 +526,7 @@ with open('munsell_3-3.csv', 'r') as f:
 
 final_html = html_template.replace('{{CSV_DATA}}', csv_data)
 
-with open('munsell_solid_v6.html', 'w') as f:
+with open('index.html', 'w') as f:
     f.write(final_html)
 
-print("Generated munsell_solid_v6.html successfully.")
+print("Generated index.html successfully.")

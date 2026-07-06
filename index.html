@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Munsell Color Solid with Pigments (v4)</title>
+    <title>Munsell Color Solid with Pigments (v6)</title>
     <style>
         body {
             margin: 0;
@@ -19,8 +19,9 @@
             background: rgba(0, 0, 0, 0.8);
             padding: 15px;
             border-radius: 8px;
-            z-index: 10;
+            z-index: 20;
             width: 300px;
+            pointer-events: auto;
         }
         input[type=range] {
             width: 100%;
@@ -31,6 +32,37 @@
             display: block;
             margin-bottom: 5px;
             font-weight: bold;
+        }
+        button {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 15px;
+            background: #555;
+            color: #fff;
+            border: 1px solid #777;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button:hover {
+            background: #666;
+        }
+        .pigment-label {
+            background: rgba(0, 0, 0, 0.85);
+            color: #fff;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 14px;
+            cursor: pointer;
+            user-select: none;
+            white-space: nowrap;
+            border: 1px solid #555;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            pointer-events: auto;
+        }
+        .pigment-label:hover {
+            border-color: #fff;
         }
     </style>
     <script type="importmap">
@@ -44,6 +76,8 @@
 </head>
 <body>
     <div id="controls">
+        <button id="view-btn">Toggle View (Top / Side)</button>
+        
         <div style="margin-bottom: 15px;">
             <label>Max Value: <span id="value-label">10</span></label>
             <input type="range" id="value-slider" min="1" max="10" step="1" value="10">
@@ -58,6 +92,7 @@
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 
         const csvData = `H,V,C,x,y,Y
 2.5R,1,0,0.31,0.316,1.21
@@ -3109,6 +3144,7 @@
             { name: "Manganese Blue (PB33)", hex: "#1E7FA0" },
             { name: "Cobalt Blue (PB28)", hex: "#1F4FA0" },
             { name: "Ultramarine Blue (PB29)", hex: "#2E2E8F" },
+            { name: "Alizarin Crimson", hex: "#8B1A2B" },
             { name: "Cobalt Violet Deep (PV14)", hex: "#6A3F8F" }
         ];
 
@@ -3218,6 +3254,15 @@
         renderer.setPixelRatio(window.devicePixelRatio);
         document.body.appendChild(renderer.domElement);
 
+        // Setup CSS2DRenderer
+        const labelRenderer = new CSS2DRenderer();
+        labelRenderer.setSize(window.innerWidth, window.innerHeight);
+        labelRenderer.domElement.style.position = 'absolute';
+        labelRenderer.domElement.style.top = '0px';
+        labelRenderer.domElement.style.pointerEvents = 'none'; // let mouse events pass through to canvas
+        document.body.appendChild(labelRenderer.domElement);
+
+        // We bind OrbitControls to the renderer domElement so it gets pointer events
         const controls = new OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
         controls.dampingFactor = 0.05;
@@ -3273,77 +3318,79 @@
             solidGroup.add(mesh);
         });
 
-        // Function to create text sprites
-        function createTextSprite(message) {
-            const canvas = document.createElement('canvas');
-            const context = canvas.getContext('2d');
-            const fontSize = 28;
-            context.font = "Bold " + fontSize + "px Arial";
-            const metrics = context.measureText(message);
-            const textWidth = metrics.width;
-            
-            canvas.width = textWidth + 24;
-            canvas.height = fontSize + 20;
-            
-            context.fillStyle = "rgba(0, 0, 0, 0.8)";
-            context.beginPath();
-            context.roundRect(0, 0, canvas.width, canvas.height, 8);
-            context.fill();
-            
-            context.fillStyle = "rgba(255, 255, 255, 1.0)";
-            context.font = "Bold " + fontSize + "px Arial";
-            context.textAlign = "center";
-            context.textBaseline = "middle";
-            context.fillText(message, canvas.width / 2, canvas.height / 2);
-            
-            const texture = new THREE.CanvasTexture(canvas);
-            texture.minFilter = THREE.LinearFilter;
-            const spriteMaterial = new THREE.SpriteMaterial({ map: texture, depthTest: false, depthWrite: false });
-            const sprite = new THREE.Sprite(spriteMaterial);
-            
-            const scale = 0.08;
-            sprite.scale.set(canvas.width * scale, canvas.height * scale, 1);
-            return sprite;
-        }
-
-        const pigmentSpheres = [];
+        const pigmentBoxes = [];
 
         // Build Pigments
-        const markerGeometry = new THREE.SphereGeometry(1.0, 32, 32);
+        const markerGeometry = new THREE.BoxGeometry(1.6, 3.2, 1.6);
         pigmentsList.forEach(pigment => {
             const rgb = hexToRGB(pigment.hex);
             const nearest = findNearestMunsell(rgb[0], rgb[1], rgb[2]);
             
-            const markerMaterial = new THREE.MeshStandardMaterial({
-                color: new THREE.Color(`rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`),
-                roughness: 0.2, metalness: 0.5
+            const markerMaterial = new THREE.MeshBasicMaterial({
+                color: new THREE.Color(`rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`)
             });
             const marker = new THREE.Mesh(markerGeometry, markerMaterial);
             const basePos = new THREE.Vector3(nearest.xPos, nearest.yPos, nearest.zPos);
             marker.position.copy(basePos);
             
-            const sprite = createTextSprite(pigment.name);
-            // Offset sprite slightly above and outward
-            const radialDir = new THREE.Vector3(basePos.x, 0, basePos.z).normalize();
-            if (radialDir.lengthSq() === 0) radialDir.set(1, 0, 0);
-            sprite.position.copy(basePos).add(radialDir.multiplyScalar(2.0)).add(new THREE.Vector3(0, 2.0, 0));
-            sprite.visible = false;
+            if (nearest.C > 0 && nearest.hueIndex !== -1) {
+                marker.rotation.y = (nearest.hueIndex / 40.0) * Math.PI * 2;
+            }
+
+            // Create CSS2D Object
+            const div = document.createElement('div');
+            div.className = 'pigment-label';
+            div.textContent = pigment.name;
+
+            const labelObj = new CSS2DObject(div);
+            labelObj.position.set(0, 3, 0); // Offset slightly above
+            labelObj.visible = false;
+            marker.add(labelObj);
+
+            marker.userData = { 
+                div: div,
+                labelObj: labelObj,
+                state: {
+                    hoveredVoxel: false,
+                    hoveredLabel: false,
+                    pinned: false
+                },
+                updateVisibility: function() {
+                    const s = this.state;
+                    this.labelObj.visible = (s.hoveredVoxel || s.hoveredLabel || s.pinned);
+                }
+            };
             
-            marker.userData = { sprite: sprite, toggled: false };
+            // Label events
+            div.addEventListener('mouseenter', () => {
+                marker.userData.state.hoveredLabel = true;
+                marker.userData.updateVisibility();
+            });
+            div.addEventListener('mouseleave', () => {
+                marker.userData.state.hoveredLabel = false;
+                marker.userData.updateVisibility();
+            });
             
-            pigmentSpheres.push(marker);
+            // Clicking label unpins it (and pins it if not pinned, but we know it must be visible to click it)
+            // Stop propagation to prevent window raycast from double toggling
+            div.addEventListener('mousedown', (e) => e.stopPropagation());
+            div.addEventListener('mouseup', (e) => {
+                e.stopPropagation();
+                marker.userData.state.pinned = !marker.userData.state.pinned;
+                marker.userData.updateVisibility();
+            });
+
+            pigmentBoxes.push(marker);
             pigmentsGroup.add(marker);
-            pigmentsGroup.add(sprite);
         });
 
         solidGroup.position.y = -15;
         pigmentsGroup.position.y = -15;
 
-        // Click-to-toggle logic
+        // Interaction logic
         const raycaster = new THREE.Raycaster();
         const mouse = new THREE.Vector2();
-
-        // Handle clicks on spheres
+        
         let isDragging = false;
         let mouseDownPos = new THREE.Vector2();
 
@@ -3356,29 +3403,62 @@
             if (mouseDownPos.distanceTo(new THREE.Vector2(event.clientX, event.clientY)) > 5) {
                 isDragging = true;
             }
+            
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(pigmentBoxes);
+            
+            // Reset all voxel hovers
+            pigmentBoxes.forEach(box => {
+                box.userData.state.hoveredVoxel = false;
+            });
+            
+            if (intersects.length > 0) {
+                const box = intersects[0].object;
+                box.userData.state.hoveredVoxel = true;
+            }
+            
+            pigmentBoxes.forEach(box => box.userData.updateVisibility());
         });
 
         window.addEventListener('mouseup', (event) => {
-            if (isDragging) return; // Prevent clicks from triggering after an orbit rotation
+            if (isDragging) return;
             
             mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
             mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
             
             raycaster.setFromCamera(mouse, camera);
             
-            const intersects = raycaster.intersectObjects(pigmentSpheres);
+            // Check boxes (to toggle)
+            const intersects = raycaster.intersectObjects(pigmentBoxes);
             if (intersects.length > 0) {
                 const marker = intersects[0].object;
-                marker.userData.toggled = !marker.userData.toggled;
-                marker.userData.sprite.visible = marker.userData.toggled;
+                marker.userData.state.pinned = !marker.userData.state.pinned;
+                marker.userData.updateVisibility();
             }
         });
 
         // UI Controls logic
+        const viewBtn = document.getElementById('view-btn');
         const valueSlider = document.getElementById('value-slider');
         const valueLabel = document.getElementById('value-label');
         const transparencySlider = document.getElementById('transparency-slider');
         const transparencyLabel = document.getElementById('transparency-label');
+
+        let isTopView = false;
+        viewBtn.addEventListener('click', (e) => {
+            isTopView = !isTopView;
+            if (isTopView) {
+                camera.position.set(0, 100, 0.001); 
+                controls.target.set(0, 0, 0);
+            } else {
+                camera.position.set(100, 0, 0);
+                controls.target.set(0, 0, 0);
+            }
+            controls.update();
+        });
 
         function updateVoxels() {
             const cutoffValue = parseInt(valueSlider.value);
@@ -3409,12 +3489,14 @@
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
+            labelRenderer.setSize(window.innerWidth, window.innerHeight);
         });
 
         function animate() {
             requestAnimationFrame(animate);
             controls.update();
             renderer.render(scene, camera);
+            labelRenderer.render(scene, camera);
         }
 
         animate();
