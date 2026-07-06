@@ -66,6 +66,19 @@
             box-shadow: 0 4px 6px rgba(0,0,0,0.3);
             pointer-events: auto;
         }
+        .pigment-label div {
+            font-size: 11px;
+            color: #aaa;
+            margin-top: 2px;
+        }
+        .hue-anchor-label {
+            color: #fff;
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 0 0 5px #000, 0 0 10px #000;
+            pointer-events: none;
+            transition: opacity 0.2s;
+        }
         .pigment-label:hover {
             border-color: #fff;
         }
@@ -3320,6 +3333,33 @@
         scene.add(pigmentsGroup);
         scene.add(mixGroup);
 
+        const hueAnchors = [];
+        const anchorData = [
+            { label: 'R', h: 5 },
+            { label: 'Y', h: 25 },
+            { label: 'G', h: 45 },
+            { label: 'C', h: 55 },
+            { label: 'B', h: 65 },
+            { label: 'M', h: 95 }
+        ];
+
+        anchorData.forEach(data => {
+            const theta = (data.h * 3.6) * (Math.PI / 180);
+            const radius = 40;
+            const x = Math.cos(theta) * radius;
+            const z = Math.sin(theta) * radius;
+            const y = 33; // Floating above the solid
+
+            const div = document.createElement('div');
+            div.className = 'hue-anchor-label';
+            div.textContent = data.label;
+            
+            const cssObj = new CSS2DObject(div);
+            cssObj.position.set(x, y, z);
+            solidGroup.add(cssObj);
+            hueAnchors.push(div);
+        });
+
         const boxGeometry = new THREE.BoxGeometry(1.4, 2.8, 1.4);
         const cubes = [];
 
@@ -3684,6 +3724,10 @@
                 cube.visible = cube.userData.V <= cutoffValue && opacity > 0;
                 cube.material.depthWrite = (opacity > 0.95); 
                 cube.material.opacity = opacity;
+            });
+
+            hueAnchors.forEach(div => {
+                div.style.opacity = opacity;
             });
         }
 
