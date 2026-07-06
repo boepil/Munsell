@@ -3261,8 +3261,8 @@
         labelRenderer.domElement.style.pointerEvents = 'none'; // let mouse events pass through to canvas
         document.body.appendChild(labelRenderer.domElement);
 
-        // We bind OrbitControls to the labelRenderer domElement because it is on top
-        const controls = new OrbitControls(camera, labelRenderer.domElement);
+        // We bind OrbitControls to the renderer domElement so it gets pointer events
+        const controls = new OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
         controls.dampingFactor = 0.05;
         controls.target.set(0, 15, 0);
@@ -3340,14 +3340,15 @@
             const div = document.createElement('div');
             div.className = 'pigment-label';
             div.textContent = pigment.name;
-            div.style.display = 'none';
 
             const labelObj = new CSS2DObject(div);
             labelObj.position.set(0, 3, 0); // Offset slightly above
+            labelObj.visible = false;
             marker.add(labelObj);
 
             marker.userData = { 
                 div: div,
+                labelObj: labelObj,
                 state: {
                     hoveredVoxel: false,
                     hoveredLabel: false,
@@ -3355,7 +3356,7 @@
                 },
                 updateVisibility: function() {
                     const s = this.state;
-                    this.div.style.display = (s.hoveredVoxel || s.hoveredLabel || s.pinned) ? 'block' : 'none';
+                    this.labelObj.visible = (s.hoveredVoxel || s.hoveredLabel || s.pinned);
                 }
             };
             
