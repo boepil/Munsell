@@ -79,6 +79,7 @@ html_template = """<!DOCTYPE html>
 <body>
     <div id="controls">
         <button id="view-btn">Toggle View (Top / Side)</button>
+        <button id="reset-btn" style="margin-bottom: 15px;">Reset Labels</button>
         
         <div style="margin-bottom: 15px;">
             <label>Max Value: <span id="value-label">10</span></label>
@@ -160,7 +161,7 @@ html_template = """<!DOCTYPE html>
             { name: "Manganese Blue (PB33)", hex: "#1E7FA0" },
             { name: "Cobalt Blue (PB28)", hex: "#1F4FA0" },
             { name: "Ultramarine Blue (PB29)", hex: "#2E2E8F" },
-            { name: "Alizarin Crimson", hex: "#8B1A2B" },
+            { name: "Alizarin Crimson (PR83)", hex: "#8B1A2B" },
             { name: "Cobalt Violet Deep (PV14)", hex: "#6A3F8F" }
         ];
 
@@ -458,6 +459,7 @@ html_template = """<!DOCTYPE html>
 
         // UI Controls logic
         const viewBtn = document.getElementById('view-btn');
+        const resetBtn = document.getElementById('reset-btn');
         const valueSlider = document.getElementById('value-slider');
         const valueLabel = document.getElementById('value-label');
         const transparencySlider = document.getElementById('transparency-slider');
@@ -474,6 +476,13 @@ html_template = """<!DOCTYPE html>
                 controls.target.set(0, 0, 0);
             }
             controls.update();
+        });
+
+        resetBtn.addEventListener('click', () => {
+            pigmentBoxes.forEach(marker => {
+                marker.userData.state.pinned = false;
+                marker.userData.updateVisibility();
+            });
         });
 
         function updateVoxels() {
