@@ -80,6 +80,7 @@ html_template = """<!DOCTYPE html>
     <div id="controls">
         <button id="view-btn">Toggle View (Top / Side)</button>
         <button id="reset-btn" style="margin-bottom: 15px;">Reset Labels</button>
+        <button id="toggle-mix-btn" style="margin-bottom: 15px;">Toggle Mix Shape</button>
         
         <div style="margin-bottom: 15px;">
             <label>Max Value: <span id="value-label">10</span></label>
@@ -96,6 +97,7 @@ html_template = """<!DOCTYPE html>
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
         import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+        import { ConvexGeometry } from 'three/addons/geometries/ConvexGeometry.js';
 
         const csvData = `{{CSV_DATA}}`;
 
@@ -298,8 +300,10 @@ html_template = """<!DOCTYPE html>
 
         const solidGroup = new THREE.Group();
         const pigmentsGroup = new THREE.Group();
+        const mixGroup = new THREE.Group();
         scene.add(solidGroup);
         scene.add(pigmentsGroup);
+        scene.add(mixGroup);
 
         const boxGeometry = new THREE.BoxGeometry(1.4, 2.8, 1.4);
         const cubes = [];
@@ -395,6 +399,7 @@ html_template = """<!DOCTYPE html>
                 e.stopPropagation();
                 marker.userData.state.pinned = !marker.userData.state.pinned;
                 marker.userData.updateVisibility();
+                updateMixShape();
             });
 
             pigmentBoxes.push(marker);
@@ -403,6 +408,125 @@ html_template = """<!DOCTYPE html>
 
         solidGroup.position.y = -15;
         pigmentsGroup.position.y = -15;
+        mixGroup.position.y = -15;
+
+        // --- Pigment Mixing Logic ---
+        const mixMaterial = new THREE.ShaderMaterial({
+            vertexShader: `
+                attribute vec3 logColor;
+                varying vec3 vLogColor;
+                void main() {
+                    vLogColor = logColor;
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                }
+            `,
+            fragmentShader: `
+                varying vec3 vLogColor;
+                void main() {
+                    // Hardware interpolation of logs gives weighted arithmetic mean of logs,
+                    // which equals the log of the weighted geometric mean!
+                    vec3 rgb = exp(vLogColor);
+                    gl_FragColor = vec4(rgb, 0.6); // 0.6 opacity as requested
+                }
+            `,
+            transparent: true,
+            side: THREE.DoubleSide,
+            depthWrite: false
+        });
+        
+        const mixLineMaterial = new THREE.ShaderMaterial({
+            vertexShader: `
+                attribute vec3 logColor;
+                varying vec3 vLogColor;
+                void main() {
+                    vLogColor = logColor;
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                }
+            `,
+            fragmentShader: `
+                varying vec3 vLogColor;
+                void main() {
+                    vec3 rgb = exp(vLogColor);
+                    gl_FragColor = vec4(rgb, 0.8);
+                }
+            `,
+            transparent: true,
+            depthWrite: false
+        });
+
+        let isMixVisible = true;
+        let currentMixMesh = null;
+
+        function updateMixShape() {
+            if (currentMixMesh) {
+                mixGroup.remove(currentMixMesh);
+                currentMixMesh.geometry.dispose();
+                currentMixMesh = null;
+            }
+
+            if (!isMixVisible) return;
+
+            const pinned = pigmentBoxes.filter(b => b.userData.state.pinned);
+            if (pinned.length < 2) return;
+
+            const points = [];
+            const logColorsMap = new Map();
+
+            pinned.forEach(marker => {
+                const p = marker.position.clone();
+                points.push(p);
+                const col = marker.material.color;
+                const eps = 0.001; // Clamp to avoid log(0) - -Infinity
+                logColorsMap.set(`${p.x.toFixed(4)},${p.y.toFixed(4)},${p.z.toFixed(4)}`, [
+                    Math.log(Math.max(col.r, eps)),
+                    Math.log(Math.max(col.g, eps)),
+                    Math.log(Math.max(col.b, eps))
+                ]);
+            });
+
+            if (pinned.length === 2) {
+                const geometry = new THREE.BufferGeometry().setFromPoints(points);
+                const logColors = new Float32Array(6);
+                
+                const c1 = logColorsMap.get(`${points[0].x.toFixed(4)},${points[0].y.toFixed(4)},${points[0].z.toFixed(4)}`);
+                logColors[0] = c1[0]; logColors[1] = c1[1]; logColors[2] = c1[2];
+                
+                const c2 = logColorsMap.get(`${points[1].x.toFixed(4)},${points[1].y.toFixed(4)},${points[1].z.toFixed(4)}`);
+                logColors[3] = c2[0]; logColors[4] = c2[1]; logColors[5] = c2[2];
+                
+                geometry.setAttribute('logColor', new THREE.BufferAttribute(logColors, 3));
+                currentMixMesh = new THREE.Line(geometry, mixLineMaterial);
+                mixGroup.add(currentMixMesh);
+            } else {
+                const geometry = new ConvexGeometry(points);
+                const posAttr = geometry.attributes.position;
+                const logColors = new Float32Array(posAttr.count * 3);
+                
+                for (let i = 0; i < posAttr.count; i++) {
+                    const pt = new THREE.Vector3(posAttr.getX(i), posAttr.getY(i), posAttr.getZ(i));
+                    
+                    let bestDist = Infinity;
+                    let bestKey = null;
+                    points.forEach(op => {
+                        const d = op.distanceToSquared(pt);
+                        if (d < bestDist) {
+                            bestDist = d;
+                            bestKey = `${op.x.toFixed(4)},${op.y.toFixed(4)},${op.z.toFixed(4)}`;
+                        }
+                    });
+                    
+                    const c = logColorsMap.get(bestKey);
+                    logColors[i*3] = c[0];
+                    logColors[i*3+1] = c[1];
+                    logColors[i*3+2] = c[2];
+                }
+                
+                geometry.setAttribute('logColor', new THREE.BufferAttribute(logColors, 3));
+                currentMixMesh = new THREE.Mesh(geometry, mixMaterial);
+                mixGroup.add(currentMixMesh);
+            }
+        }
+        // -----------------------------
 
         // Interaction logic
         const raycaster = new THREE.Raycaster();
@@ -454,12 +578,14 @@ html_template = """<!DOCTYPE html>
                 const marker = intersects[0].object;
                 marker.userData.state.pinned = !marker.userData.state.pinned;
                 marker.userData.updateVisibility();
+                updateMixShape();
             }
         });
 
         // UI Controls logic
         const viewBtn = document.getElementById('view-btn');
         const resetBtn = document.getElementById('reset-btn');
+        const toggleMixBtn = document.getElementById('toggle-mix-btn');
         const valueSlider = document.getElementById('value-slider');
         const valueLabel = document.getElementById('value-label');
         const transparencySlider = document.getElementById('transparency-slider');
@@ -483,6 +609,12 @@ html_template = """<!DOCTYPE html>
                 marker.userData.state.pinned = false;
                 marker.userData.updateVisibility();
             });
+            updateMixShape();
+        });
+
+        toggleMixBtn.addEventListener('click', () => {
+            isMixVisible = !isMixVisible;
+            updateMixShape();
         });
 
         function updateVoxels() {
