@@ -82,6 +82,49 @@
         .pigment-label:hover {
             border-color: #fff;
         }
+        .sample-label {
+            background: rgba(0, 50, 100, 0.9); /* distinct blue background */
+            color: #fff;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 13px;
+            cursor: pointer;
+            user-select: none;
+            white-space: nowrap;
+            border: 1px solid #3a86ff;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            pointer-events: auto;
+        }
+        .sample-label div {
+            font-size: 11px;
+            color: #bbb;
+            margin-top: 2px;
+        }
+        .sample-label:hover {
+            border-color: #fff;
+        }
+        #drop-zone.dragover {
+            background: rgba(255,255,255,0.1);
+            border-color: #aaa;
+        }
+        .ctrl-btn {
+            background-color: #222 !important;
+            color: #ddd !important;
+            border: 1px solid #444 !important;
+            border-radius: 4px !important;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .ctrl-btn:hover:not(:disabled) {
+            background-color: #333 !important;
+            border-color: #666 !important;
+            color: #fff !important;
+        }
+        .ctrl-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
     </style>
     <script type="importmap">
         {
@@ -132,6 +175,55 @@
         <div>
             <label>Transparency: <span id="transparency-label">0</span>%</label>
             <input type="range" id="transparency-slider" min="0" max="100" step="1" value="0">
+        </div>
+        
+        <!-- Image Sampling & Pigment-Constrained Palette Preview -->
+        <hr style="border: 0; border-top: 1px solid #444; margin: 15px 0;">
+        <div id="image-panel-toggle" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: bold; margin-bottom: 10px; user-select: none;">
+            <span>Image Palette Tool</span>
+            <span id="image-panel-arrow">[+]</span>
+        </div>
+        <div id="image-panel-content" style="display: none; flex-direction: column; gap: 12px;">
+            <!-- Drag and drop zone / file input -->
+            <div id="drop-zone" style="border: 2px dashed #555; border-radius: 6px; padding: 15px; text-align: center; cursor: pointer; transition: background 0.2s; background: rgba(255,255,255,0.02);">
+                <span id="drop-text" style="font-size: 13px; color: #aaa;">Drag & drop image here or click to browse</span>
+                <input type="file" id="file-input" accept="image/*" style="display: none;">
+            </div>
+            
+            <!-- Thumbnail preview -->
+            <div id="thumb-container" style="display: none; position: relative; text-align: center;">
+                <canvas id="thumb-canvas" style="max-width: 100%; border-radius: 4px; box-shadow: 0 4px 8px rgba(0,0,0,0.4); display: block; margin: 0 auto;"></canvas>
+                <!-- Overlay canvas for selection crosshair -->
+                <canvas id="overlay-canvas" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;"></canvas>
+            </div>
+            
+            <!-- Action buttons -->
+            <div style="display: flex; gap: 8px;">
+                <button id="auto-sample-btn" class="ctrl-btn" style="flex: 1; font-size: 12px; padding: 6px; cursor: pointer; height: auto; width: auto; display: block;" disabled>Auto Sample</button>
+                <button id="toggle-view-image-btn" class="ctrl-btn" style="flex: 1; font-size: 12px; padding: 6px; cursor: pointer; height: auto; width: auto; display: none;">Show Original</button>
+            </div>
+
+            <!-- Pigment mixture section -->
+            <div id="pigment-mix-section" style="border-top: 1px solid #333; padding-top: 10px; display: none;">
+                <button id="pigment-preview-btn" class="ctrl-btn" style="font-size: 12px; padding: 6px; cursor: pointer; width: 100%; height: auto; display: block; margin-bottom: 8px;">Pigment Mixture Preview</button>
+                
+                <div id="pigment-checklist-container" style="display: none; max-height: 150px; overflow-y: auto; border: 1px solid #444; border-radius: 4px; padding: 6px; background: rgba(0,0,0,0.3); margin-bottom: 10px; text-align: left;">
+                    <!-- Checkboxes will be populated dynamically -->
+                </div>
+                
+                <div id="accuracy-container" style="display: none; flex-direction: column; gap: 6px; margin-top: 6px;">
+                    <label style="font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 6px; margin: 0; font-weight: normal;">
+                        <input type="checkbox" id="show-accuracy-toggle" style="margin: 0;"> Show Palette Accuracy
+                    </label>
+                    <div id="accuracy-legend" style="display: none; height: 14px; border-radius: 3px; background: linear-gradient(to right, #00ff00, #ffff00, #ff0000); border: 1px solid #555; width: 100%;"></div>
+                    <div style="display: flex; justify-content: space-between; font-size: 10px; color: #aaa;">
+                        <span>Low error</span>
+                        <span id="avg-delta-e" style="font-weight: bold; color: #fff;">Avg &Delta;E: --</span>
+                        <span>High error</span>
+                    </div>
+                </div>
+                <button id="highlight-toggle-btn" class="ctrl-btn" style="font-size: 12px; padding: 6px; cursor: pointer; width: 100%; height: auto; display: block; margin-top: 6px;">Highlight Sampled Voxels: OFF</button>
+            </div>
         </div>
     </div>
 
@@ -3293,7 +3385,7 @@
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x333333);
         
-        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.01, 50000);
         camera.position.set(40, 30, 40);
 
         const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -3314,6 +3406,24 @@
         controls.enableDamping = true;
         controls.dampingFactor = 0.05;
         controls.target.set(0, 15, 0);
+        controls.maxDistance = 800;
+        controls.minDistance = 5;
+        controls.enableZoom = false;
+
+        // Custom smooth zoom — does NOT call controls.update(), letting animate() pick up the change
+        renderer.domElement.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const step = Math.max(1, camera.position.distanceTo(controls.target) * 0.03);
+            const direction = e.deltaY > 0 ? 1 : -1;
+            const currentDist = camera.position.distanceTo(controls.target);
+            const newDist = Math.max(controls.minDistance, Math.min(controls.maxDistance, currentDist + direction * step));
+            const factor = newDist / currentDist;
+            const offset = new THREE.Vector3().subVectors(camera.position, controls.target);
+            offset.multiplyScalar(factor);
+            camera.position.copy(controls.target).add(offset);
+            // Diagnostic: log before-andafter state
+            console.log(`ZOOM deltaY=${e.deltaY} dist=${newDist.toFixed(2)} cam=(${camera.position.x.toFixed(1)},${camera.position.y.toFixed(1)},${camera.position.z.toFixed(1)})`);
+        }, { passive: false });
 
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
         scene.add(ambientLight);
@@ -3329,9 +3439,11 @@
         const solidGroup = new THREE.Group();
         const pigmentsGroup = new THREE.Group();
         const mixGroup = new THREE.Group();
+        const sampleLabelGroup = new THREE.Group();
         scene.add(solidGroup);
         scene.add(pigmentsGroup);
         scene.add(mixGroup);
+        scene.add(sampleLabelGroup);
 
         const hueAnchors = [];
         const anchorData = [
@@ -3362,9 +3474,13 @@
 
         const boxGeometry = new THREE.BoxGeometry(1.4, 2.8, 1.4);
         const cubes = [];
+        let highlightMode = false;
+        const highlightedVoxelIndices = new Set();
+        const pinnedPigments = new Set();
+        let syncingPigments = false;
 
         // Build Voxels
-        munsellColors.forEach(color => {
+        munsellColors.forEach((color, idx) => {
             const yPos = color.V * 3;
             let xPos = 0, zPos = 0;
             let hIndex = color.hueIndex;
@@ -3387,7 +3503,7 @@
             
             const mesh = new THREE.Mesh(boxGeometry, material);
             mesh.position.set(xPos, yPos, zPos);
-            mesh.userData = { V: color.V };
+            mesh.userData = { V: color.V, cubeIdx: idx };
             if (color.C > 0 && hIndex !== -1) mesh.rotation.y = (hIndex / 40.0) * Math.PI * 2;
             
             cubes.push(mesh);
@@ -3397,8 +3513,8 @@
         const pigmentBoxes = [];
 
         // Build Pigments
-        const markerGeometry = new THREE.BoxGeometry(1.6, 3.2, 1.6);
-        pigmentsList.forEach(pigment => {
+        const markerGeometry = new THREE.BoxGeometry(0.8, 1.6, 0.8);
+        pigmentsList.forEach((pigment, pigmentIdx) => {
             const rgb = hexToRGB(pigment.hex);
             const nearest = findNearestMunsell(rgb[0], rgb[1], rgb[2]);
             
@@ -3424,6 +3540,7 @@
             marker.add(labelObj);
 
             marker.userData = { 
+                pigmentIdx: pigmentIdx,
                 div: div,
                 labelObj: labelObj,
                 state: {
@@ -3447,15 +3564,14 @@
                 marker.userData.updateVisibility();
             });
             
-            // Clicking label unpins it (and pins it if not pinned, but we know it must be visible to click it)
-            // Stop propagation to prevent window raycast from double toggling
+            // Clicking label toggles pin via shared state
             div.addEventListener('mousedown', (e) => e.stopPropagation());
             div.addEventListener('mouseup', (e) => {
                 e.stopPropagation();
-                marker.userData.state.pinned = !marker.userData.state.pinned;
-                marker.userData.updateVisibility();
-                updateMixShape();
-                if (typeof updatePigmentBoxVisibility === 'function') updatePigmentBoxVisibility();
+                const idx = marker.userData.pigmentIdx;
+                if (pinnedPigments.has(idx)) pinnedPigments.delete(idx);
+                else pinnedPigments.add(idx);
+                syncPigmentUI();
             });
 
             pigmentBoxes.push(marker);
@@ -3465,6 +3581,7 @@
         solidGroup.position.y = -15;
         pigmentsGroup.position.y = -15;
         mixGroup.position.y = -15;
+        sampleLabelGroup.position.y = -15;
 
         // --- Pigment Mixing Logic ---
         const mixMaterial = new THREE.ShaderMaterial({
@@ -3619,19 +3736,28 @@
             mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
             
             raycaster.setFromCamera(mouse, camera);
-            const intersects = raycaster.intersectObjects(pigmentBoxes);
             
-            // Reset all voxel hovers
             pigmentBoxes.forEach(box => {
                 box.userData.state.hoveredVoxel = false;
             });
+            sampleBoxes.forEach(box => {
+                box.userData.state.hovered = false;
+            });
             
+            const intersects = raycaster.intersectObjects(pigmentBoxes);
             if (intersects.length > 0) {
                 const box = intersects[0].object;
                 box.userData.state.hoveredVoxel = true;
             }
             
+            const intersectsSample = raycaster.intersectObjects(sampleBoxes);
+            if (intersectsSample.length > 0) {
+                const box = intersectsSample[0].object;
+                box.userData.state.hovered = true;
+            }
+            
             pigmentBoxes.forEach(box => box.userData.updateVisibility());
+            sampleBoxes.forEach(box => box.userData.updateVisibility());
         });
 
         window.addEventListener('mouseup', (event) => {
@@ -3642,15 +3768,556 @@
             
             raycaster.setFromCamera(mouse, camera);
             
-            // Check boxes (to toggle)
+            // Check pigment boxes (to toggle via shared state)
             const intersects = raycaster.intersectObjects(pigmentBoxes);
             if (intersects.length > 0) {
                 const marker = intersects[0].object;
-                marker.userData.state.pinned = !marker.userData.state.pinned;
-                marker.userData.updateVisibility();
-                updateMixShape();
-                if (typeof updatePigmentBoxVisibility === 'function') updatePigmentBoxVisibility();
+                const idx = marker.userData.pigmentIdx;
+                if (pinnedPigments.has(idx)) pinnedPigments.delete(idx);
+                else pinnedPigments.add(idx);
+                syncPigmentUI();
+                return;
             }
+            
+            // Check sample boxes (to pin & show crosshair)
+            const intersectsSample = raycaster.intersectObjects(sampleBoxes);
+            if (intersectsSample.length > 0) {
+                const marker = intersectsSample[0].object;
+                const pt = marker.userData.pt;
+                
+                const wasPinned = marker.userData.state.pinned;
+                sampleBoxes.forEach(box => {
+                    box.userData.state.pinned = false;
+                    box.userData.updateVisibility();
+                });
+                
+                marker.userData.state.pinned = !wasPinned;
+                marker.userData.updateVisibility();
+                
+                if (marker.userData.state.pinned) {
+                    showCrosshair(pt);
+                } else {
+                    showCrosshair(null);
+                }
+            }
+        });
+
+        // --- Image Palette Tool Variables & Logic ---
+        let originalImageData = null;
+        let recoloredImageData = null;
+        let heatmapImageData = null;
+        let errorsData = null;
+        const sampleBoxes = [];
+        const sampleAnchorGeom = new THREE.BoxGeometry(0.3, 0.3, 0.3);
+
+        const panelToggle = document.getElementById('image-panel-toggle');
+        const panelContent = document.getElementById('image-panel-content');
+        const panelArrow = document.getElementById('image-panel-arrow');
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const thumbCanvas = document.getElementById('thumb-canvas');
+        const overlayCanvas = document.getElementById('overlay-canvas');
+        const autoSampleBtn = document.getElementById('auto-sample-btn');
+        const toggleViewBtn = document.getElementById('toggle-view-image-btn');
+        const pigmentMixSection = document.getElementById('pigment-mix-section');
+        const pigmentPreviewBtn = document.getElementById('pigment-preview-btn');
+        const checklistContainer = document.getElementById('pigment-checklist-container');
+        const accuracyContainer = document.getElementById('accuracy-container');
+        const showAccuracyToggle = document.getElementById('show-accuracy-toggle');
+        const overlayCtx = overlayCanvas.getContext('2d');
+
+        panelToggle.addEventListener('click', () => {
+            const isHidden = panelContent.style.display === 'none';
+            panelContent.style.display = isHidden ? 'flex' : 'none';
+            panelArrow.textContent = isHidden ? '[-]' : '[+]';
+        });
+
+        dropZone.addEventListener('click', () => fileInput.click());
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            if (e.dataTransfer.files.length > 0) handleImageFile(e.dataTransfer.files[0]);
+        });
+        fileInput.addEventListener('change', () => {
+            if (fileInput.files.length > 0) handleImageFile(fileInput.files[0]);
+        });
+
+        function handleImageFile(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    const maxEdge = 400;
+                    let w = img.width, h = img.height;
+                    if (w > maxEdge || h > maxEdge) {
+                        if (w > h) { h = Math.round((h * maxEdge) / w); w = maxEdge; }
+                        else { w = Math.round((w * maxEdge) / h); h = maxEdge; }
+                    }
+                    thumbCanvas.width = w; thumbCanvas.height = h;
+                    overlayCanvas.width = w; overlayCanvas.height = h;
+                    
+                    const ctx = thumbCanvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, w, h);
+                    originalImageData = ctx.getImageData(0, 0, w, h);
+                    recoloredImageData = null; heatmapImageData = null; errorsData = null;
+                    
+                    document.querySelectorAll('.pigment-mix-checkbox').forEach(cb => cb.checked = false);
+                    showAccuracyToggle.checked = false;
+                    toggleViewBtn.style.display = 'none';
+                    toggleViewBtn.textContent = 'Show Original';
+                    accuracyContainer.style.display = 'none';
+                    document.getElementById('thumb-container').style.display = 'block';
+                    autoSampleBtn.disabled = false;
+                    pigmentMixSection.style.display = 'block';
+                    
+                    clearSampleMarkers();
+                    showCrosshair(null);
+                    pinnedPigments.clear();
+                    syncPigmentUI();
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function fastSRGBToLab(r, g, b) {
+            let r_ = r / 255.0, g_ = g / 255.0, b_ = b / 255.0;
+            r_ = r_ > 0.04045 ? Math.pow((r_ + 0.055) / 1.055, 2.4) : r_ / 12.92;
+            g_ = g_ > 0.04045 ? Math.pow((g_ + 0.055) / 1.055, 2.4) : g_ / 12.92;
+            b_ = b_ > 0.04045 ? Math.pow((b_ + 0.055) / 1.055, 2.4) : b_ / 12.92;
+            const x = (r_ * 0.4124 + g_ * 0.3576 + b_ * 0.1805) * 100.0;
+            const y = (r_ * 0.2126 + g_ * 0.7152 + b_ * 0.0722) * 100.0;
+            const z = (r_ * 0.0193 + g_ * 0.1192 + b_ * 0.9505) * 100.0;
+            const ref_X = 95.047, ref_Y = 100.000, ref_Z = 108.883;
+            let x_ = x / ref_X, y_ = y / ref_Y, z_ = z / ref_Z;
+            x_ = x_ > 0.008856 ? Math.pow(x_, 1/3) : (7.787 * x_) + (16 / 116);
+            y_ = y_ > 0.008856 ? Math.pow(y_, 1/3) : (7.787 * y_) + (16 / 116);
+            z_ = z_ > 0.008856 ? Math.pow(z_, 1/3) : (7.787 * z_) + (16 / 116);
+            return [(116 * y_) - 16, 500 * (x_ - y_), 200 * (y_ - z_)];
+        }
+
+        function findNearestPigment(r, g, b) {
+            const sLab = sRGB_to_Lab(r, g, b);
+            let nearest = null, minDist = Infinity;
+            pigmentsList.forEach(p => {
+                const pRGB = hexToRGB(p.hex);
+                const pLab = sRGB_to_Lab(pRGB[0], pRGB[1], pRGB[2]);
+                const d = Math.pow(pLab[0]-sLab[0], 2) + Math.pow(pLab[1]-sLab[1], 2) + Math.pow(pLab[2]-sLab[2], 2);
+                if (d < minDist) { minDist = d; nearest = p; }
+            });
+            return nearest;
+        }
+
+        function clearSampleMarkers() {
+            while (sampleLabelGroup.children.length > 0) {
+                const child = sampleLabelGroup.children[0];
+                sampleLabelGroup.remove(child);
+                if (child.geometry) child.geometry.dispose();
+                if (child.material) child.material.dispose();
+            }
+            sampleBoxes.length = 0;
+            highlightedVoxelIndices.clear();
+        }
+
+        function showCrosshair(pt) {
+            overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+            if (!pt) return;
+            overlayCtx.strokeStyle = '#ff3a3a';
+            overlayCtx.lineWidth = 2;
+            overlayCtx.beginPath();
+            overlayCtx.arc(pt.x, pt.y, 6, 0, Math.PI * 2);
+            overlayCtx.stroke();
+            overlayCtx.beginPath();
+            overlayCtx.moveTo(pt.x - 12, pt.y);
+            overlayCtx.lineTo(pt.x + 12, pt.y);
+            overlayCtx.moveTo(pt.x, pt.y - 12);
+            overlayCtx.lineTo(pt.x, pt.y + 12);
+            overlayCtx.stroke();
+        }
+
+        function addSamplePoint(x, y, srcData, w, h) {
+            // 5x5 neighborhood average at the clicked pixel
+            let rSum = 0, gSum = 0, bSum = 0, count = 0;
+            for (let dy = -2; dy <= 2; dy++) {
+                for (let dx = -2; dx <= 2; dx++) {
+                    const nx = x + dx, ny = y + dy;
+                    if (nx >= 0 && nx < w && ny >= 0 && ny < h) {
+                        const idx = (ny * w + nx) * 4;
+                        rSum += srcData[idx]; gSum += srcData[idx+1]; bSum += srcData[idx+2]; count++;
+                    }
+                }
+            }
+            const avgR = rSum / count, avgG = gSum / count, avgB = bSum / count;
+
+            const nearest = findNearestMunsell(avgR, avgG, avgB);
+            const munsellIdx = munsellColors.indexOf(nearest);
+            const targetLab = sRGB_to_Lab(avgR, avgG, avgB);
+
+            console.log(`Sample at (${x},${y}): RGB(${avgR.toFixed(0)},${avgG.toFixed(0)},${avgB.toFixed(0)}) Lab(${targetLab[0].toFixed(1)},${targetLab[1].toFixed(1)},${targetLab[2].toFixed(1)}) -> ${nearest.H} ${nearest.V}/${nearest.C} (Lab ${nearest.lab[0].toFixed(1)},${nearest.lab[1].toFixed(1)},${nearest.lab[2].toFixed(1)}) idx=${munsellIdx}`);
+
+            if (munsellIdx !== -1) {
+                highlightedVoxelIndices.add(munsellIdx);
+            } else {
+                console.warn(`No matching voxel found for sample at (${x},${y})`);
+            }
+
+            const nearestPigment = findNearestPigment(avgR, avgG, avgB);
+            const div = document.createElement('div');
+            div.className = 'sample-label';
+            div.innerHTML = `Sample: ${nearest.H} ${nearest.V}/${nearest.C}<div>Nearest: ${nearestPigment.name}</div>`;
+            const labelObj = new CSS2DObject(div);
+            labelObj.position.set(0, 2, 0);
+            labelObj.visible = false;
+
+            const anchor = new THREE.Mesh(sampleAnchorGeom, new THREE.MeshBasicMaterial({ visible: false }));
+            anchor.position.set(nearest.xPos, nearest.yPos, nearest.zPos);
+            anchor.add(labelObj);
+
+            anchor.userData = {
+                pt: { x, y }, div, labelObj,
+                state: { hovered: false, pinned: false },
+                updateVisibility: function() { this.labelObj.visible = (this.state.hovered || this.state.pinned); }
+            };
+
+            div.addEventListener('mouseenter', () => { anchor.userData.state.hovered = true; anchor.userData.updateVisibility(); });
+            div.addEventListener('mouseleave', () => { anchor.userData.state.hovered = false; anchor.userData.updateVisibility(); });
+            div.addEventListener('mousedown', (e) => e.stopPropagation());
+            div.addEventListener('mouseup', (e) => {
+                e.stopPropagation();
+                const wasPinned = anchor.userData.state.pinned;
+                sampleBoxes.forEach(box => { box.userData.state.pinned = false; box.userData.updateVisibility(); });
+                anchor.userData.state.pinned = !wasPinned;
+                anchor.userData.updateVisibility();
+                if (anchor.userData.state.pinned) showCrosshair({ x, y });
+                else showCrosshair(null);
+            });
+
+            sampleBoxes.push(anchor);
+            sampleLabelGroup.add(anchor);
+
+            if (!highlightMode) {
+                highlightMode = true;
+                const hBtn = document.getElementById('highlight-toggle-btn');
+                if (hBtn) hBtn.textContent = 'Highlight Sampled Voxels: ON';
+            }
+            updateVoxels();
+        }
+
+        // Click-to-sample on the image canvas
+        thumbCanvas.addEventListener('click', (e) => {
+            if (!originalImageData) return;
+            const rect = thumbCanvas.getBoundingClientRect();
+            const x = Math.round((e.clientX - rect.left) * (originalImageData.width / rect.width));
+            const y = Math.round((e.clientY - rect.top) * (originalImageData.height / rect.height));
+            const cx = Math.max(0, Math.min(originalImageData.width - 1, x));
+            const cy = Math.max(0, Math.min(originalImageData.height - 1, y));
+            addSamplePoint(cx, cy, originalImageData.data, originalImageData.width, originalImageData.height);
+        });
+
+        function updatePreviewDisplay() {
+            if (!originalImageData) return;
+            const ctx = thumbCanvas.getContext('2d');
+            const showOriginal = toggleViewBtn.textContent === 'Show Recolored';
+            const accuracyLegend = document.getElementById('accuracy-legend');
+            const avgDeltaE = document.getElementById('avg-delta-e');
+
+            if (showOriginal) {
+                ctx.putImageData(originalImageData, 0, 0);
+                accuracyLegend.style.display = 'none';
+                avgDeltaE.textContent = 'Avg dE: --';
+            } else if (showAccuracyToggle.checked && heatmapImageData) {
+                ctx.putImageData(heatmapImageData, 0, 0);
+                accuracyLegend.style.display = 'block';
+                // Compute average Delta E from errorsData
+                if (errorsData && errorsData.length > 0) {
+                    let sum = 0;
+                    for (let i = 0; i < errorsData.length; i++) sum += errorsData[i];
+                    const avg = (sum / errorsData.length).toFixed(1);
+                    avgDeltaE.textContent = `Avg dE: ${avg} - lower is better`;
+                }
+            } else if (recoloredImageData) {
+                ctx.putImageData(recoloredImageData, 0, 0);
+                accuracyLegend.style.display = 'none';
+                if (errorsData && errorsData.length > 0) {
+                    let sum = 0;
+                    for (let i = 0; i < errorsData.length; i++) sum += errorsData[i];
+                    const avg = (sum / errorsData.length).toFixed(1);
+                    avgDeltaE.textContent = `Avg dE: ${avg}`;
+                }
+            } else {
+                ctx.putImageData(originalImageData, 0, 0);
+                accuracyLegend.style.display = 'none';
+                avgDeltaE.textContent = 'Avg dE: --';
+            }
+        }
+
+        toggleViewBtn.addEventListener('click', () => {
+            if (toggleViewBtn.textContent === 'Show Original') {
+                toggleViewBtn.textContent = 'Show Recolored';
+            } else {
+                toggleViewBtn.textContent = 'Show Original';
+            }
+            updatePreviewDisplay();
+        });
+
+        showAccuracyToggle.addEventListener('change', () => {
+            updatePreviewDisplay();
+        });
+
+        autoSampleBtn.addEventListener('click', () => {
+            if (!originalImageData) return;
+            const w = originalImageData.width, h = originalImageData.height;
+            const data = originalImageData.data;
+
+            // Grayscale
+            const gray = new Float32Array(w * h);
+            for (let i = 0; i < w * h; i++) {
+                gray[i] = 0.299 * data[i*4] + 0.587 * data[i*4+1] + 0.114 * data[i*4+2];
+            }
+
+            // Sobel edge magnitude
+            const edge = new Float32Array(w * h);
+            let maxEdge = 0;
+            for (let y = 1; y < h - 1; y++) {
+                for (let x = 1; x < w - 1; x++) {
+                    const idx = y * w + x;
+                    const gx = -1*gray[(y-1)*w+(x-1)] + 1*gray[(y-1)*w+(x+1)] - 2*gray[y*w+(x-1)] + 2*gray[y*w+(x+1)] - 1*gray[(y+1)*w+(x-1)] + 1*gray[(y+1)*w+(x+1)];
+                    const gy = -1*gray[(y-1)*w+(x-1)] - 2*gray[(y-1)*w+x] - 1*gray[(y-1)*w+(x+1)] + 1*gray[(y+1)*w+(x-1)] + 2*gray[(y+1)*w+x] + 1*gray[(y+1)*w+(x+1)];
+                    const mag = Math.sqrt(gx*gx + gy*gy);
+                    edge[idx] = mag;
+                    if (mag > maxEdge) maxEdge = mag;
+                }
+            }
+            if (maxEdge > 0) for (let i = 0; i < edge.length; i++) edge[i] /= maxEdge;
+
+            // Local chroma (Lab C*)
+            const chroma = new Float32Array(w * h);
+            let maxChroma = 0;
+            for (let i = 0; i < w * h; i++) {
+                const lab = sRGB_to_Lab(data[i*4], data[i*4+1], data[i*4+2]);
+                const cVal = Math.sqrt(lab[1]*lab[1] + lab[2]*lab[2]);
+                chroma[i] = cVal;
+                if (cVal > maxChroma) maxChroma = cVal;
+            }
+            if (maxChroma > 0) for (let i = 0; i < chroma.length; i++) chroma[i] /= maxChroma;
+
+            // Combined interest score
+            const scores = new Float32Array(w * h);
+            for (let i = 0; i < scores.length; i++) scores[i] = 0.5 * edge[i] + 0.5 * chroma[i];
+
+            // Grid clustering: 4x5 cells
+            const gridRows = 4, gridCols = 5;
+            const cellW = w / gridCols, cellH = h / gridRows;
+            const selectedPoints = [];
+            for (let r = 0; r < gridRows; r++) {
+                for (let c = 0; c < gridCols; c++) {
+                    const xStart = Math.floor(c * cellW), xEnd = Math.min(w, Math.floor((c+1)*cellW));
+                    const yStart = Math.floor(r * cellH), yEnd = Math.min(h, Math.floor((r+1)*cellH));
+                    let bestX = -1, bestY = -1, maxScore = -1;
+                    for (let y = yStart; y < yEnd; y++) {
+                        for (let x = xStart; x < xEnd; x++) {
+                            const idx = y * w + x;
+                            if (scores[idx] > maxScore) { maxScore = scores[idx]; bestX = x; bestY = y; }
+                        }
+                    }
+                    if (bestX !== -1 && maxScore > 0.05) selectedPoints.push({ x: bestX, y: bestY, score: maxScore });
+                }
+            }
+
+            // Mark matched voxels as highlighted and create label anchors
+            console.log(`Auto-Sample: Found ${selectedPoints.length} candidate points`);
+            clearSampleMarkers();
+            showCrosshair(null);
+
+            selectedPoints.forEach((pt, i) => {
+                addSamplePoint(pt.x, pt.y, data, w, h);
+            });
+            console.log(`Auto-Sample: Total highlighted voxels: ${highlightedVoxelIndices.size}`);
+
+            // Auto-enable highlight mode
+            highlightMode = true;
+            const highlightToggleBtn = document.getElementById('highlight-toggle-btn');
+            if (highlightToggleBtn) highlightToggleBtn.textContent = 'Highlight Sampled Voxels: ON';
+            updateVoxels();
+        });
+
+        // --- Subtractive Mixing Logic ---
+        function mixColors(pigmentsWithWeights) {
+            const eps = 0.001;
+            let sumLogR = 0, sumLogG = 0, sumLogB = 0, totalW = 0;
+            for (const pw of pigmentsWithWeights) {
+                const rgb = pw.rgb, w = pw.weight;
+                sumLogR += w * Math.log(Math.max(rgb[0]/255.0, eps));
+                sumLogG += w * Math.log(Math.max(rgb[1]/255.0, eps));
+                sumLogB += w * Math.log(Math.max(rgb[2]/255.0, eps));
+                totalW += w;
+            }
+            if (totalW > 0) { sumLogR /= totalW; sumLogG /= totalW; sumLogB /= totalW; }
+            return [
+                Math.round(Math.exp(sumLogR) * 255),
+                Math.round(Math.exp(sumLogG) * 255),
+                Math.round(Math.exp(sumLogB) * 255)
+            ];
+        }
+
+        function generateWeightCombinations(M) {
+            let S = 10;
+            if (M === 2) S = 40;
+            else if (M === 3) S = 20;
+            else if (M === 4) S = 8;
+            else if (M === 5) S = 5;
+            else if (M === 6) S = 4;
+            else S = 3;
+
+            const combos = [];
+            function recurse(index, currentSum, currentWeights) {
+                if (index === M - 1) {
+                    currentWeights.push((S - currentSum) / S);
+                    combos.push([...currentWeights]);
+                    currentWeights.pop();
+                    return;
+                }
+                for (let w = 0; w <= S - currentSum; w++) {
+                    currentWeights.push(w / S);
+                    recurse(index + 1, currentSum + w, currentWeights);
+                    currentWeights.pop();
+                }
+            }
+            recurse(0, 0, []);
+            return combos;
+        }
+
+        function computeRecoloredImage(srcData, achievableGamut, w, h) {
+            const resultData = new Uint8ClampedArray(srcData.length);
+            const errors = new Float32Array(w * h);
+            for (let i = 0; i < w * h; i++) {
+                const idx = i * 4;
+                const r = srcData[idx], g = srcData[idx+1], b = srcData[idx+2], a = srcData[idx+3];
+                const pixelLab = fastSRGBToLab(r, g, b);
+                let bestRGB = null, bestDist = Infinity;
+                for (let j = 0; j < achievableGamut.length; j++) {
+                    const gc = achievableGamut[j];
+                    const d = Math.pow(gc.lab[0]-pixelLab[0],2) + Math.pow(gc.lab[1]-pixelLab[1],2) + Math.pow(gc.lab[2]-pixelLab[2],2);
+                    if (d < bestDist) { bestDist = d; bestRGB = gc.rgb; }
+                }
+                resultData[idx] = bestRGB[0]; resultData[idx+1] = bestRGB[1];
+                resultData[idx+2] = bestRGB[2]; resultData[idx+3] = a;
+                errors[i] = Math.sqrt(bestDist);
+            }
+            return { imageData: new ImageData(resultData, w, h), errors };
+        }
+
+        function errorToRGB(error) {
+            const t = Math.min(1.0, error / 40.0);
+            let r = 0, g = 0;
+            if (t < 0.5) { r = Math.round(t * 2 * 255); g = 255; }
+            else { r = 255; g = Math.round((1 - (t - 0.5) * 2) * 255); }
+            return [r, g, 0];
+        }
+
+        function generateAccuracyHeatmap(recoloredImageData, errors) {
+            const w = recoloredImageData.width, h = recoloredImageData.height;
+            const src = recoloredImageData.data;
+            const heat = new Uint8ClampedArray(src.length);
+            for (let i = 0; i < w * h; i++) {
+                const idx = i * 4;
+                const [hr, hg, hb] = errorToRGB(errors[i]);
+                heat[idx] = Math.round(0.7 * hr + 0.3 * src[idx]);
+                heat[idx+1] = Math.round(0.7 * hg + 0.3 * src[idx+1]);
+                heat[idx+2] = Math.round(0.7 * hb + 0.3 * src[idx+2]);
+                heat[idx+3] = 255;
+            }
+            return new ImageData(heat, w, h);
+        }
+
+        function syncPigmentUI() {
+            if (syncingPigments) return;
+            syncingPigments = true;
+
+            // Sync checkboxes from shared state
+            document.querySelectorAll('.pigment-mix-checkbox').forEach(cb => {
+                const idx = parseInt(cb.value);
+                cb.checked = pinnedPigments.has(idx);
+            });
+
+            // Sync 3D pins from shared state
+            pigmentBoxes.forEach((marker, idx) => {
+                const shouldBePinned = pinnedPigments.has(idx);
+                if (marker.userData.state.pinned !== shouldBePinned) {
+                    marker.userData.state.pinned = shouldBePinned;
+                    marker.userData.updateVisibility();
+                }
+            });
+
+            updateMixShape();
+            if (typeof updatePigmentBoxVisibility === 'function') updatePigmentBoxVisibility();
+            updatePigmentPreview();
+
+            syncingPigments = false;
+        }
+
+        function updatePigmentPreview() {
+            if (!originalImageData) return;
+            const selectedIndices = Array.from(pinnedPigments);
+            if (selectedIndices.length === 0) {
+                recoloredImageData = null; heatmapImageData = null; errorsData = null;
+                toggleViewBtn.style.display = 'none';
+                accuracyContainer.style.display = 'none';
+                updatePreviewDisplay();
+                return;
+            }
+
+            let mixList = selectedIndices.map(idx => ({ name: pigmentsList[idx].name, rgb: hexToRGB(pigmentsList[idx].hex) }));
+            if (mixList.length === 1) {
+                mixList.push({ name: "Titanium White (PW6)", rgb: hexToRGB("#F5F5F0") });
+                mixList.push({ name: "Carbon Black (PBk6)", rgb: hexToRGB("#1C1C1C") });
+            }
+
+            const combinations = generateWeightCombinations(mixList.length);
+            const achievableGamut = [];
+            combinations.forEach(weights => {
+                const mixedRGB = mixColors(mixList.map((p, idx) => ({ rgb: p.rgb, weight: weights[idx] })));
+                const mixedLab = sRGB_to_Lab(mixedRGB[0], mixedRGB[1], mixedRGB[2]);
+                achievableGamut.push({ rgb: mixedRGB, lab: mixedLab });
+            });
+
+            const result = computeRecoloredImage(originalImageData.data, achievableGamut, originalImageData.width, originalImageData.height);
+            recoloredImageData = result.imageData;
+            errorsData = result.errors;
+            heatmapImageData = generateAccuracyHeatmap(recoloredImageData, errorsData);
+
+            toggleViewBtn.style.display = 'block';
+            toggleViewBtn.textContent = 'Show Original';
+            accuracyContainer.style.display = 'flex';
+            document.getElementById('show-accuracy-toggle').checked = false;
+            updatePreviewDisplay();
+        }
+
+        // Populate pigment checklist
+        pigmentsList.forEach((pigment, idx) => {
+            const label = document.createElement('label');
+            label.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:12px;margin-bottom:4px;font-weight:normal;cursor:pointer;';
+            const cb = document.createElement('input');
+            cb.type = 'checkbox'; cb.value = idx; cb.className = 'pigment-mix-checkbox';
+            const swatch = document.createElement('span');
+            swatch.style.cssText = `display:inline-block;width:12px;height:12px;background-color:${pigment.hex};border:1px solid #555;border-radius:2px;flex-shrink:0;`;
+            label.appendChild(cb);
+            label.appendChild(swatch);
+            label.appendChild(document.createTextNode(pigment.name));
+            checklistContainer.appendChild(label);
+            cb.addEventListener('change', () => {
+                if (syncingPigments) return;
+                if (cb.checked) pinnedPigments.add(idx);
+                else pinnedPigments.delete(idx);
+                syncPigmentUI();
+            });
+        });
+
+        pigmentPreviewBtn.addEventListener('click', () => {
+            const isHidden = checklistContainer.style.display === 'none';
+            checklistContainer.style.display = isHidden ? 'block' : 'none';
         });
 
         // UI Controls logic
@@ -3668,21 +4335,17 @@
             isTopView = !isTopView;
             if (isTopView) {
                 camera.position.set(0, 100, 0.001); 
-                controls.target.set(0, 0, 0);
+                controls.target.set(0, 15, 0);
             } else {
                 camera.position.set(100, 0, 0);
-                controls.target.set(0, 0, 0);
+                controls.target.set(0, 15, 0);
             }
             controls.update();
         });
 
         resetBtn.addEventListener('click', () => {
-            pigmentBoxes.forEach(marker => {
-                marker.userData.state.pinned = false;
-                marker.userData.updateVisibility();
-            });
-            updateMixShape();
-            if (typeof updatePigmentBoxVisibility === 'function') updatePigmentBoxVisibility();
+            pinnedPigments.clear();
+            syncPigmentUI();
         });
 
         toggleMixBtn.addEventListener('click', () => {
@@ -3715,19 +4378,44 @@
             updatePigmentBoxVisibility();
         });
 
+        const highlightToggleBtn = document.getElementById('highlight-toggle-btn');
+        highlightToggleBtn.addEventListener('click', () => {
+            highlightMode = !highlightMode;
+            highlightToggleBtn.textContent = highlightMode ? 'Highlight Sampled Voxels: ON' : 'Highlight Sampled Voxels: OFF';
+            updateVoxels();
+        });
+
         function updateVoxels() {
             const cutoffValue = parseInt(valueSlider.value);
             const transparency = parseInt(transparencySlider.value) / 100.0;
-            const opacity = 1.0 - transparency;
+            const baseOpacity = 1.0 - transparency;
+            const samplesExist = highlightedVoxelIndices.size > 0;
+            
+            if (highlightMode) {
+                console.log(`Updating voxels (Highlight Mode ON): samplesExist=${samplesExist}, count=${highlightedVoxelIndices.size}`);
+            }
 
-            cubes.forEach(cube => {
-                cube.visible = cube.userData.V <= cutoffValue && opacity > 0;
-                cube.material.depthWrite = (opacity > 0.95); 
+            cubes.forEach((cube, idx) => {
+                // Highlighted sample voxels are always fully visible, ignore both sliders
+                if (highlightMode && samplesExist && highlightedVoxelIndices.has(idx)) {
+                    cube.visible = true;
+                    cube.material.depthWrite = true;
+                    cube.material.opacity = 1.0;
+                    return;
+                }
+
+                // All other voxels: normal behavior
+                const visibleByValue = cube.userData.V <= cutoffValue;
+                const highlightMultiplier = (highlightMode && samplesExist) ? 0.2 : 1.0;
+                const opacity = baseOpacity * highlightMultiplier;
+                
+                cube.visible = visibleByValue && opacity > 0;
+                cube.material.depthWrite = (opacity > 0.95);
                 cube.material.opacity = opacity;
             });
 
             hueAnchors.forEach(div => {
-                div.style.opacity = opacity;
+                div.style.opacity = baseOpacity;
             });
         }
 
@@ -3742,6 +4430,7 @@
         });
 
         // Initialize
+        syncPigmentUI();
         updateVoxels();
 
         window.addEventListener('resize', () => {
@@ -3754,8 +4443,17 @@
         function animate() {
             requestAnimationFrame(animate);
             controls.update();
-            renderer.render(scene, camera);
-            labelRenderer.render(scene, camera);
+            try {
+                const dist = camera.position.distanceTo(controls.target);
+                if (window.lastDist !== undefined && Math.abs(dist - window.lastDist) > 0.5) {
+                    console.log(`ZOOM_ANIMATE dist=${dist.toFixed(2)} prev=${window.lastDist.toFixed(2)} step=${(dist-window.lastDist).toFixed(2)}`);
+                }
+                window.lastDist = dist;
+                renderer.render(scene, camera);
+                labelRenderer.render(scene, camera);
+            } catch(e) {
+                console.error('Render error:', e);
+            }
         }
 
         animate();
