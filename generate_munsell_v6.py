@@ -824,7 +824,7 @@ html_template = """<!DOCTYPE html>
         let heatmapImageData = null;
         let errorsData = null;
         const sampleBoxes = [];
-        const sampleAnchorGeom = new THREE.BoxGeometry(0.3, 0.3, 0.3);
+        const sampleSphereGeom = new THREE.SphereGeometry(0.5, 16, 12);
 
         const panelToggle = document.getElementById('image-panel-toggle');
         const panelContent = document.getElementById('image-panel-content');
@@ -987,7 +987,10 @@ html_template = """<!DOCTYPE html>
             labelObj.position.set(0, 2, 0);
             labelObj.visible = false;
 
-            const anchor = new THREE.Mesh(sampleAnchorGeom, new THREE.MeshBasicMaterial({ visible: false }));
+            const nrgb = nearest.rgb;
+            const anchor = new THREE.Mesh(sampleSphereGeom, new THREE.MeshBasicMaterial({
+                color: new THREE.Color(`rgb(${nrgb[0]}, ${nrgb[1]}, ${nrgb[2]})`)
+            }));
             anchor.position.set(nearest.xPos, nearest.yPos, nearest.zPos);
             anchor.add(labelObj);
 
@@ -1307,7 +1310,6 @@ html_template = """<!DOCTYPE html>
             toggleViewBtn.style.display = 'block';
             toggleViewBtn.textContent = 'Show Original';
             accuracyContainer.style.display = 'flex';
-            document.getElementById('show-accuracy-toggle').checked = false;
             updatePreviewDisplay();
         }
 
@@ -1412,15 +1414,6 @@ html_template = """<!DOCTYPE html>
             }
 
             cubes.forEach((cube, idx) => {
-                // Highlighted sample voxels are always fully visible, ignore both sliders
-                if (highlightMode && samplesExist && highlightedVoxelIndices.has(idx)) {
-                    cube.visible = true;
-                    cube.material.depthWrite = true;
-                    cube.material.opacity = 1.0;
-                    return;
-                }
-
-                // All other voxels: normal behavior
                 const visibleByValue = cube.userData.V <= cutoffValue;
                 const highlightMultiplier = (highlightMode && samplesExist) ? 0.2 : 1.0;
                 const opacity = baseOpacity * highlightMultiplier;
