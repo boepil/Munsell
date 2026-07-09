@@ -4272,19 +4272,63 @@
                 return;
             }
 
-            let mixList = selectedIndices.map(idx => ({ name: pigmentsList[idx].name, rgb: hexToRGB(pigmentsList[idx].hex) }));
-            if (mixList.length === 1) {
-                mixList.push({ name: "Titanium White (PW6)", rgb: hexToRGB("#F5F5F0") });
-                mixList.push({ name: "Carbon Black (PBk6)", rgb: hexToRGB("#1C1C1C") });
+            const allPigments = selectedIndices.map(idx => ({
+                name: pigmentsList[idx].name,
+                rgb: hexToRGB(pigmentsList[idx].hex)
+            }));
+
+            // Build LUT from all non-empty subsets (guarantees monotonic Delta E)
+            const lutMap = new Map();
+            const N = allPigments.length;
+
+            // Cache weight combos by subset size
+            const comboCache = {};
+            function getCombos(k) {
+                if (!comboCache[k]) comboCache[k] = generateWeightCombinations(k);
+                return comboCache[k];
             }
 
-            const combinations = generateWeightCombinations(mixList.length);
-            const achievableGamut = [];
-            combinations.forEach(weights => {
-                const mixedRGB = mixColors(mixList.map((p, idx) => ({ rgb: p.rgb, weight: weights[idx] })));
-                const mixedLab = sRGB_to_Lab(mixedRGB[0], mixedRGB[1], mixedRGB[2]);
-                achievableGamut.push({ rgb: mixedRGB, lab: mixedLab });
-            });
+            function addToLUT(rgb) {
+                const lab = sRGB_to_Lab(rgb[0], rgb[1], rgb[2]);
+                const key = `${Math.round(lab[0])},${Math.round(lab[1])},${Math.round(lab[2])}`;
+                if (!lutMap.has(key)) lutMap.set(key, { rgb, lab });
+            }
+
+            // If only one pigment, include white+black for tints/shades (original behavior)
+            if (N === 1) {
+                const triad = [
+                    allPigments[0],
+                    { rgb: hexToRGB("#F5F5F0") },
+                    { rgb: hexToRGB("#1C1C1C") }
+                ];
+                const combos = getCombos(3);
+                for (const weights of combos) {
+                    const mixedRGB = mixColors(triad.map((p, idx) => ({ rgb: p.rgb, weight: weights[idx] })));
+                    addToLUT(mixedRGB);
+                }
+                // Also add pure pigment alone
+                addToLUT(allPigments[0].rgb);
+            } else {
+                // All non-empty subsets via bitmask
+                for (let mask = 1; mask < (1 << N); mask++) {
+                    const subset = [];
+                    for (let i = 0; i < N; i++) {
+                        if (mask & (1 << i)) subset.push(allPigments[i]);
+                    }
+                    const k = subset.length;
+                    if (k === 1) {
+                        addToLUT(subset[0].rgb);
+                    } else {
+                        const combos = getCombos(k);
+                        for (const weights of combos) {
+                            const mixedRGB = mixColors(subset.map((p, idx) => ({ rgb: p.rgb, weight: weights[idx] })));
+                            addToLUT(mixedRGB);
+                        }
+                    }
+                }
+            }
+
+            const achievableGamut = Array.from(lutMap.values());
 
             const result = computeRecoloredImage(originalImageData.data, achievableGamut, originalImageData.width, originalImageData.height);
             recoloredImageData = result.imageData;
