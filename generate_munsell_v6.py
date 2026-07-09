@@ -251,57 +251,59 @@ html_template = """<!DOCTYPE html>
         ];
 
         const pigmentsList = [
-            { name: "Hansa Yellow (PY97)", hex: "#F5E03C" },
-            { name: "Cadmium Yellow (PY35)", hex: "#FFDE00" },
-            { name: "Cadmium Lemon (PY35)", hex: "#FFF166" },
-            { name: "Bismuth Yellow (PY184)", hex: "#FFE97F" },
-            { name: "Nickel Titanate (PY53)", hex: "#EAD98A" },
-            { name: "Yellow Ochre (PY43)", hex: "#C89B3C" },
-            { name: "Raw Sienna (PBr7)", hex: "#9A6324" },
-            { name: "Cadmium Orange (PO20)", hex: "#FF7300" },
-            { name: "Pyrrole Orange (PO73)", hex: "#FF5F1F" },
-            { name: "Quinacridone Gold (PO49)", hex: "#C77B23" },
-            { name: "Pyrrole Red (PR254)", hex: "#E8290B" },
-            { name: "Cadmium Scarlet (PR108)", hex: "#E62020" },
-            { name: "Naphthol Scarlet (PR188)", hex: "#D8261E" },
-            { name: "Quinacridone Red (PR209)", hex: "#C0143C" },
-            { name: "Cadmium Red Deep (PR108)", hex: "#B7211A" },
-            { name: "Venetian Red (PR101)", hex: "#A6473A" },
-            { name: "Burnt Sienna (PBr7)", hex: "#914E2B" },
-            { name: "Burnt Umber (PBr7)", hex: "#5A3A29" },
-            { name: "Raw Umber (PBr7)", hex: "#6B5B3E" },
-            { name: "Perylene Maroon (PR179)", hex: "#5C1A1E" },
-            { name: "Quinacridone Rose (PV19)", hex: "#C9184A" },
-            { name: "Quinacridone Violet (PV19)", hex: "#8E2043" },
-            { name: "Quinacridone Magenta (PR122)", hex: "#A31545" },
-            { name: "Manganese Violet (PV16)", hex: "#6B3FA0" },
-            { name: "Cobalt Violet (PV49)", hex: "#8B5FBF" },
-            { name: "Dioxazine Violet (PV23)", hex: "#46246B" },
-            { name: "Ultramarine Violet (PV15)", hex: "#4B2E83" },
-            { name: "Phthalo Green YS (PG36)", hex: "#00785A" },
-            { name: "Phthalo Green BS (PG7)", hex: "#00543C" },
-            { name: "Viridian (PG18)", hex: "#40826D" },
-            { name: "Cobalt Titanate Green (PG50)", hex: "#4F8A6D" },
-            { name: "Chromium Oxide Green (PG17)", hex: "#6E7F3C" },
-            { name: "Sap Green", hex: "#5E7A3D" },
-            { name: "Hooker's Green", hex: "#29524A" },
-            { name: "Titanium White (PW6)", hex: "#F5F5F0" },
-            { name: "Carbon Black (PBk6)", hex: "#1C1C1C" },
-            { name: "Mars Violet (PR101)", hex: "#5A3A3A" },
-            { name: "Sepia", hex: "#4A3728" },
-            { name: "Indigo", hex: "#1B2A4A" },
-            { name: "Cobalt Teal Blue (PG50)", hex: "#2A8F8C" },
-            { name: "Phthalo Turquoise (PB16)", hex: "#007A87" },
-            { name: "Cerulean Blue (PB35)", hex: "#2A8FBF" },
-            { name: "Prussian Blue (PB27)", hex: "#0F2A4A" },
-            { name: "Phthalo Blue (PB15)", hex: "#0C1F8F" },
-            { name: "Phthalo Cyan (PB17)", hex: "#0F4FA0" },
-            { name: "Manganese Blue (PB33)", hex: "#1E7FA0" },
-            { name: "Cobalt Blue (PB28)", hex: "#1F4FA0" },
-            { name: "Ultramarine Blue (PB29)", hex: "#2E2E8F" },
-            { name: "Alizarin Crimson (PR83)", hex: "#8B1A2B" },
-            { name: "Cobalt Violet Deep (PV14)", hex: "#6A3F8F" }
+            { name: "Titanium White",              code: "PW6",    munsell: "N 10/0" },
+            { name: "Carbon Black",                code: "PBk6",   munsell: "N 1/0" },
+            { name: "Hansa Yellow",                code: "PY97",   munsell: "8.2YR 7/15.8" },
+            { name: "Cadmium Lemon",               code: "PY35",   munsell: "2.5Y 8/18" },
+            { name: "Cadmium Yellow",              code: "PY35",   munsell: "6.0Y 9.1/20.9" },
+            { name: "Yellow Ochre",                code: "PY43",   munsell: "2.5Y 6/6" },
+            { name: "Raw Sienna",                  code: "PBr7",   munsell: "10YR 4.8/6.8" },
+            { name: "Cadmium Orange",              code: "PO20",   munsell: "2YR 6.3/17.5" },
+            { name: "Quinacridone Red",            code: "PR209",  munsell: "2.5R 3.3/12" },
+            { name: "Cadmium Red Deep",            code: "PR108",  munsell: "7R 5.1/16.2" },
+            { name: "Quinacridone Red Light",      code: "PR206/207", munsell: "5R 4.2/13" },
+            { name: "Alizarin Crimson",            code: "PR83",   munsell: "5RP 2.5/8" },
+            { name: "Venetian Red",                code: "PR101",  munsell: "10R 5.8/8" },
+            { name: "Burnt Sienna",                code: "PBr7",   munsell: "3YR 3.3/4.2" },
+            { name: "Burnt Umber",                 code: "PBr7",   munsell: "7.5YR 2.5/2" },
+            { name: "Raw Umber",                   code: "PBr7",   munsell: "3Y 2.5/1.3" },
+            { name: "Sepia",                       code: "mixture",munsell: "10YR 2/1" },
+            { name: "Payne's Grey",                code: "mixture",munsell: "5PB 2.2/1" },
+            { name: "Quinacridone Rose",           code: "PV19",   munsell: "10RP 5.2/14" },
+            { name: "Quinacridone Magenta",        code: "PR122",  munsell: "10RP 2.8/13.5" },
+            { name: "Cobalt Violet",               code: "PV49",   munsell: "2RP 6.5/10.5" },
+            { name: "Ultramarine Violet",          code: "PV15",   munsell: "2.5P 3/4" },
+            { name: "Phthalo Green BS",            code: "PG7",    munsell: "9.8BG 4.2/17.8" },
+            { name: "Viridian",                    code: "PG18",   munsell: "5BG 4/8" },
+            { name: "Chromium Oxide Green",        code: "PG17",   munsell: "9GY 4/5" },
+            { name: "Phthalo Green YS",            code: "PG36",   munsell: "4.5G 4/17.2" },
+            { name: "Phthalo Turquoise",           code: "PB16",   munsell: "7.5BG 3.1/13.2" },
+            { name: "Cerulean Blue",               code: "PB35",   munsell: "10B 5/8" },
+            { name: "Prussian Blue",               code: "PB27",   munsell: "8B 2.5/5" },
+            { name: "Phthalo Blue GS",             code: "PB15:3", munsell: "5PB 3.2/15.8" },
+            { name: "Cobalt Blue",                 code: "PB28",   munsell: "5PB 4/11" },
+            { name: "Ultramarine Blue",            code: "PB29",   munsell: "7.5PB 2.5/8" },
         ];
+
+        function parseMunsell(str) {
+            const s = str.replace(/^≈/, '').trim();
+            if (s.startsWith('N ')) {
+                const m = s.match(/^N\s+([\d.]+)\s*\/\s*([\d.]+)$/);
+                if (!m) return null;
+                return { neutral: true, V: parseFloat(m[1]), C: parseFloat(m[2]) };
+            }
+            const m = s.match(/^([\d.]+)\s*([A-Z]+)\s+([\d.]+)\s*\/\s*([\d.]+)$/);
+            if (!m) return null;
+            return { neutral: false, hueNum: parseFloat(m[1]), hueLetter: m[2], V: parseFloat(m[3]), C: parseFloat(m[4]) };
+        }
+
+        const hueNames = ['R','YR','Y','GY','G','BG','B','PB','P','RP'];
+
+        function hueToFractionalIndex(num, letter) {
+            const baseIdx = hueNames.indexOf(letter);
+            if (baseIdx === -1) return -1;
+            return baseIdx * 4 + (num - 2.5) / 2.5;
+        }
 
         function hexToRGB(hex) {
             const r = parseInt(hex.slice(1, 3), 16);
@@ -397,6 +399,51 @@ html_template = """<!DOCTYPE html>
             }
             return best;
         }
+
+        // Pre-compute voxel chip 3D positions for pigment snapping
+        munsellColors.forEach(color => {
+            const yPos = color.V * 3;
+            let xPos = 0, zPos = 0;
+            if (color.C > 0 && color.hueIndex !== -1) {
+                const angle = (color.hueIndex / 40.0) * Math.PI * 2;
+                const radius = color.C * 1.5;
+                xPos = Math.cos(angle) * radius;
+                zPos = -Math.sin(angle) * radius;
+            }
+            color.xPos = xPos; color.yPos = yPos; color.zPos = zPos;
+        });
+
+        // Compute pigment positions and colors from Munsell data
+        pigmentsList.forEach(p => {
+            const parsed = parseMunsell(p.munsell);
+            if (!parsed) return;
+            // Find nearest chip by H, V, C
+            let best = null, bestDist = Infinity;
+            for (const chip of munsellColors) {
+                let dh = 0;
+                if (parsed.neutral) {
+                    if (chip.C > 0) continue;
+                } else {
+                    if (chip.hueIndex === -1) continue;
+                    const targetIdx = hueToFractionalIndex(parsed.hueNum, parsed.hueLetter);
+                    dh = Math.abs(targetIdx - chip.hueIndex);
+                }
+                const dv = Math.abs(chip.V - parsed.V);
+                const dc = Math.abs(chip.C - parsed.C);
+                const d = dh + dv * 3 + dc * 0.4;
+                if (d < bestDist) { bestDist = d; best = chip; }
+            }
+            // Snap pigment position to the nearest voxel chip position
+            if (best) {
+                p.xPos = best.xPos;
+                p.yPos = best.yPos;
+                p.zPos = best.zPos;
+            } else {
+                p.xPos = 0; p.yPos = 0; p.zPos = 0;
+            }
+            p.rgb = best ? best.rgb : (parsed.neutral ? (() => { const g = Math.round(parsed.V / 10 * 255); return [g, g, g]; })() : [128, 128, 128]);
+            p.hex = '#' + p.rgb.map(v => v.toString(16).padStart(2, '0')).join('');
+        });
 
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x333333);
@@ -531,24 +578,23 @@ html_template = """<!DOCTYPE html>
         // Build Pigments
         const markerGeometry = new THREE.BoxGeometry(0.8, 1.6, 0.8);
         pigmentsList.forEach((pigment, pigmentIdx) => {
-            const rgb = hexToRGB(pigment.hex);
-            const nearest = findNearestMunsell(rgb[0], rgb[1], rgb[2]);
+            const rgb = pigment.rgb || [128, 128, 128];
             
             const markerMaterial = new THREE.MeshBasicMaterial({
                 color: new THREE.Color(`rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`)
             });
             const marker = new THREE.Mesh(markerGeometry, markerMaterial);
-            const basePos = new THREE.Vector3(nearest.xPos, nearest.yPos, nearest.zPos);
-            marker.position.copy(basePos);
+            marker.position.set(pigment.xPos || 0, pigment.yPos || 0, pigment.zPos || 0);
             
-            if (nearest.C > 0 && nearest.hueIndex !== -1) {
-                marker.rotation.y = (nearest.hueIndex / 40.0) * Math.PI * 2;
+            // Rotate marker to face outward
+            if (pigment.zPos !== 0 || pigment.xPos !== 0) {
+                marker.rotation.y = Math.atan2(-pigment.zPos, pigment.xPos);
             }
 
-            // Create CSS2D Object
+            // Create CSS2D Object — compact 1-line label
             const div = document.createElement('div');
             div.className = 'pigment-label';
-            div.textContent = pigment.name;
+            div.textContent = pigment.code + ' ' + pigment.name;
 
             const labelObj = new CSS2DObject(div);
             labelObj.position.set(0, 3, 0); // Offset slightly above
@@ -1515,12 +1561,12 @@ html_template = """<!DOCTYPE html>
 </html>
 """
 
-with open('munsell_3-3.csv', 'r') as f:
+with open('munsell_3-3.csv', 'r', encoding='utf-8') as f:
     csv_data = f.read()
 
 final_html = html_template.replace('{{CSV_DATA}}', csv_data)
 
-with open('index.html', 'w') as f:
+with open('index.html', 'w', encoding='utf-8') as f:
     f.write(final_html)
 
 print("Generated index.html successfully.")
