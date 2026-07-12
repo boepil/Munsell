@@ -389,6 +389,8 @@ html_template = """<!DOCTYPE html>
                 munsellColors.push({ H, V, C, rgb, lab, hueIndex });
             }
         }
+        console.log('DEBUG: CSV loaded, chips:', munsellColors.length);
+        console.log('DEBUG: 10Y chips:', munsellColors.filter(c => c.H === '10Y').length);
 
         function findNearestMunsell(r, g, b) {
             const targetLab = sRGB_to_Lab(r, g, b);
@@ -419,13 +421,13 @@ html_template = """<!DOCTYPE html>
             if (!parsed) return;
             // Find nearest chip by H, V, C
             let best = null, bestDist = Infinity;
+            const targetIdx = hueToFractionalIndex(parsed.hueNum, parsed.hueLetter);
             for (const chip of munsellColors) {
                 let dh = 0;
                 if (parsed.neutral) {
                     if (chip.C > 0) continue;
                 } else {
                     if (chip.hueIndex === -1) continue;
-                    const targetIdx = hueToFractionalIndex(parsed.hueNum, parsed.hueLetter);
                     dh = Math.abs(targetIdx - chip.hueIndex);
                 }
                 const dv = Math.abs(chip.V - parsed.V);
@@ -433,6 +435,7 @@ html_template = """<!DOCTYPE html>
                 const d = dh + dv * 3 + dc * 0.4;
                 if (d < bestDist) { bestDist = d; best = chip; }
             }
+            console.log('DEBUG: ' + p.name + ' targetIdx=' + targetIdx.toFixed(4) + ' best=' + (best ? best.H + ' V=' + best.V + ' C=' + best.C : 'NONE') + ' pos=(' + (best ? best.xPos.toFixed(2) : '0') + ',' + (best ? best.yPos.toFixed(2) : '0') + ',' + (best ? best.zPos.toFixed(2) : '0') + ')');
             // Snap pigment position to the nearest voxel chip position
             if (best) {
                 p.xPos = best.xPos;
