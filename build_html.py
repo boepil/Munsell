@@ -182,6 +182,41 @@ html_template = """<!DOCTYPE html>
             }
         }
 
+        const boundaryValues = Array.from(new Set(
+            munsellColors
+                .filter(color => color.C > 0 && color.V > 0 && color.V < 10 && color.hueIndex !== -1)
+                .map(color => color.V)
+        )).sort((a, b) => a - b);
+
+        const maxChromaByHue = Array.from({ length: hues.length }, () => []);
+        munsellColors.forEach(color => {
+            if (color.C <= 0 || color.hueIndex === -1 || color.V <= 0 || color.V >= 10) return;
+            const samples = maxChromaByHue[color.hueIndex];
+            const existing = samples.find(sample => sample.V === color.V);
+            if (existing) {
+                existing.C = Math.max(existing.C, color.C);
+            } else {
+                samples.push({ V: color.V, C: color.C });
+            }
+        });
+        maxChromaByHue.forEach(samples => samples.sort((a, b) => a.V - b.V));
+
+        function boundaryChroma(hueIndex, value) {
+            const samples = maxChromaByHue[hueIndex];
+            if (!samples.length) return 0;
+            if (value <= samples[0].V) return samples[0].C;
+            if (value >= samples[samples.length - 1].V) return samples[samples.length - 1].C;
+            for (let i = 0; i < samples.length - 1; i++) {
+                const lower = samples[i];
+                const upper = samples[i + 1];
+                if (value >= lower.V && value <= upper.V) {
+                    const t = (value - lower.V) / (upper.V - lower.V);
+                    return lower.C + (upper.C - lower.C) * t;
+                }
+            }
+            return samples[samples.length - 1].C;
+        }
+
         // Three.js setup
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x333333);
@@ -214,6 +249,70 @@ html_template = """<!DOCTYPE html>
         // Group to hold all cubes
         const solidGroup = new THREE.Group();
         scene.add(solidGroup);
+
+        const shellGeometry = new THREE.BufferGeometry();
+        const shellPositions = [];
+        const shellIndices = [];
+        const ringVertexIndices = [];
+        const hueCount = hues.length;
+        const bottomCenterIndex = 0;
+        const topCenterIndex = 1;
+        shellPositions.push(0, 0, 0);
+        shellPositions.push(0, 30, 0);
+
+        boundaryValues.forEach(value => {
+            const ring = [];
+            for (let hueIdx = 0; hueIdx < hueCount; hueIdx++) {
+                const angle = (hueIdx / hueCount) * Math.PI * 2;
+                const radius = boundaryChroma(hueIdx, value) * 1.5;
+                const xPos = Math.cos(angle) * radius;
+                const yPos = value * 3;
+                const zPos = -Math.sin(angle) * radius;
+                ring.push(shellPositions.length / 3);
+                shellPositions.push(xPos, yPos, zPos);
+            }
+            ringVertexIndices.push(ring);
+        });
+
+        if (ringVertexIndices.length > 0) {
+            const firstRing = ringVertexIndices[0];
+            const lastRing = ringVertexIndices[ringVertexIndices.length - 1];
+            for (let hueIdx = 0; hueIdx < hueCount; hueIdx++) {
+                const nextHueIdx = (hueIdx + 1) % hueCount;
+                shellIndices.push(bottomCenterIndex, firstRing[hueIdx], firstRing[nextHueIdx]);
+                shellIndices.push(topCenterIndex, lastRing[nextHueIdx], lastRing[hueIdx]);
+            }
+            for (let valueIdx = 0; valueIdx < ringVertexIndices.length - 1; valueIdx++) {
+                const lowerRing = ringVertexIndices[valueIdx];
+                const upperRing = ringVertexIndices[valueIdx + 1];
+                for (let hueIdx = 0; hueIdx < hueCount; hueIdx++) {
+                    const nextHueIdx = (hueIdx + 1) % hueCount;
+                    const a = lowerRing[hueIdx];
+                    const b = lowerRing[nextHueIdx];
+                    const c = upperRing[hueIdx];
+                    const d = upperRing[nextHueIdx];
+                    shellIndices.push(a, c, b);
+                    shellIndices.push(b, c, d);
+                }
+            }
+            shellGeometry.setAttribute('position', new THREE.Float32BufferAttribute(shellPositions, 3));
+            shellGeometry.setIndex(shellIndices);
+            shellGeometry.computeVertexNormals();
+
+            const shellMaterial = new THREE.MeshStandardMaterial({
+                color: 0xe8e8e8,
+                transparent: true,
+                opacity: 0.08,
+                roughness: 1.0,
+                metalness: 0.0,
+                side: THREE.DoubleSide,
+                depthWrite: false
+            });
+
+            const shellMesh = new THREE.Mesh(shellGeometry, shellMaterial);
+            shellMesh.renderOrder = -1;
+            solidGroup.add(shellMesh);
+        }
 
         // Geometry & Material
         const boxGeometry = new THREE.BoxGeometry(1.4, 2.8, 1.4);

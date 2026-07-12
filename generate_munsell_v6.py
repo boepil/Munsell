@@ -255,34 +255,34 @@ html_template = """<!DOCTYPE html>
             { name: "Carbon Black",                code: "PBk6",   munsell: "N 1/0" },
             { name: "Hansa Yellow",                code: "PY97",   munsell: "8.2YR 7/15.8" },
             { name: "Lemon Yellow (Primary)",      code: "205",    munsell: "0.038GY 9.300/6.436" },
-            { name: "Cadmium Yellow",              code: "PY35",   munsell: "6.0Y 9.1/20.9" },
+            { name: "Cadmium Yellow",              code: "PY35",   munsell: "7.566Y 9.226/13.545" },
             { name: "Yellow Ochre",                code: "PY43",   munsell: "2.5Y 6/6" },
-            { name: "Raw Sienna",                  code: "PBr7",   munsell: "10YR 4.8/6.8" },
-            { name: "Cadmium Orange",              code: "PO20",   munsell: "2YR 6.3/17.5" },
-            { name: "Quinacridone Red",            code: "PR209",  munsell: "2.5R 3.3/12" },
-            { name: "Cadmium Red Deep",            code: "PR108",  munsell: "7R 5.1/16.2" },
+            { name: "Raw Sienna",                  code: "PBr7",   munsell: "8.130YR 5.670/7.107" },
+            { name: "Cadmium Orange",              code: "PO20",   munsell: "2.953YR 6.734/18.022" },
+            { name: "Quinacridone Red",            code: "PR209",  munsell: "4R 4.8/18.0" },
+            { name: "Cadmium Red Deep",            code: "PR108",  munsell: "6.57R 4.94/16.95" },
             { name: "Quinacridone Red Light",      code: "PR206/207", munsell: "5R 4.2/13" },
             { name: "Alizarin Crimson",            code: "PR83",   munsell: "5RP 2.5/8" },
-            { name: "Venetian Red",                code: "PR101",  munsell: "10R 5.8/8" },
-            { name: "Burnt Sienna",                code: "PBr7",   munsell: "3YR 3.3/4.2" },
+            { name: "Venetian Red",                code: "PR101",  munsell: "6.063R 3.841/11.680" },
+            { name: "Burnt Sienna",                code: "PBr7",   munsell: "0.004YR 4.172/7.082" },
             { name: "Burnt Umber",                 code: "PBr7",   munsell: "7.5YR 2.5/2" },
-            { name: "Raw Umber",                   code: "PBr7",   munsell: "3Y 2.5/1.3" },
+            { name: "Raw Umber",                   code: "PBr7",   munsell: "9.219YR 5.983/3.643" },
             { name: "Sepia",                       code: "mixture",munsell: "10YR 2/1" },
             { name: "Payne's Grey",                code: "mixture",munsell: "5PB 2.2/1" },
-            { name: "Quinacridone Rose",           code: "PV19",   munsell: "10RP 5.2/14" },
+            { name: "Quinacridone Rose",           code: "PV19",   munsell: "5.289R 4.308/14.575" },
             { name: "Quinacridone Magenta",        code: "PR122",  munsell: "10RP 2.8/13.5" },
             { name: "Cobalt Violet",               code: "PV49",   munsell: "2RP 6.5/10.5" },
-            { name: "Ultramarine Violet",          code: "PV15",   munsell: "2.5P 3/4" },
-            { name: "Phthalo Green BS",            code: "PG7",    munsell: "9.8BG 4.2/17.8" },
-            { name: "Viridian",                    code: "PG18",   munsell: "5BG 4/8" },
-            { name: "Chromium Oxide Green",        code: "PG17",   munsell: "9GY 4/5" },
+            { name: "Ultramarine Violet",          code: "PV15",   munsell: "2.638P 4.439/10.888" },
+            { name: "Phthalo Green BS",            code: "PG7",    munsell: "0.85BG 3.89/9.37" },
+            { name: "Viridian",                    code: "PG18",   munsell: "0.28BG 5.03/8.81" },
+            { name: "Chromium Oxide Green",        code: "PG17",   munsell: "7.881G 5.027/9.512" },
             { name: "Phthalo Green YS",            code: "PG36",   munsell: "4.5G 4/17.2" },
-            { name: "Phthalo Turquoise",           code: "PB16",   munsell: "7.5BG 3.1/13.2" },
-            { name: "Cerulean Blue",               code: "PB35",   munsell: "10B 5/8" },
-            { name: "Prussian Blue",               code: "PB27",   munsell: "8B 2.5/5" },
-            { name: "Phthalo Blue GS",             code: "PB15:3", munsell: "5PB 3.2/15.8" },
-            { name: "Cobalt Blue",                 code: "PB28",   munsell: "5PB 4/11" },
-            { name: "Ultramarine Blue",            code: "PB29",   munsell: "7.5PB 2.5/8" },
+            { name: "Phthalo Turquoise",           code: "PB16",   munsell: "4.353B 4.414/9.557" },
+            { name: "Cerulean Blue",               code: "PB35",   munsell: "3.751PB 3.410/10.724" },
+            { name: "Prussian Blue",               code: "PB27",   munsell: "6.74PB 2.85/7.74" },
+            { name: "Phthalo Blue GS",             code: "PB15:3", munsell: "4.878PB 2.578/9.331" },
+            { name: "Cobalt Blue",                 code: "PB28",   munsell: "6.05PB 4.75/14.68" },
+            { name: "Ultramarine Blue",            code: "PB29",   munsell: "6.96PB 3.39/15.93" },
         ];
 
         function parseMunsell(str) {
@@ -415,6 +415,41 @@ html_template = """<!DOCTYPE html>
             color.xPos = xPos; color.yPos = yPos; color.zPos = zPos;
         });
 
+        const boundaryValues = Array.from(new Set(
+            munsellColors
+                .filter(color => color.C > 0 && color.V > 0 && color.V < 10 && color.hueIndex !== -1)
+                .map(color => color.V)
+        )).sort((a, b) => a - b);
+
+        const maxChromaByHue = Array.from({ length: hues.length }, () => []);
+        munsellColors.forEach(color => {
+            if (color.C <= 0 || color.hueIndex === -1 || color.V <= 0 || color.V >= 10) return;
+            const samples = maxChromaByHue[color.hueIndex];
+            const existing = samples.find(sample => sample.V === color.V);
+            if (existing) {
+                existing.C = Math.max(existing.C, color.C);
+            } else {
+                samples.push({ V: color.V, C: color.C });
+            }
+        });
+        maxChromaByHue.forEach(samples => samples.sort((a, b) => a.V - b.V));
+
+        function boundaryChroma(hueIndex, value) {
+            const samples = maxChromaByHue[hueIndex];
+            if (!samples.length) return 0;
+            if (value <= samples[0].V) return samples[0].C;
+            if (value >= samples[samples.length - 1].V) return samples[samples.length - 1].C;
+            for (let i = 0; i < samples.length - 1; i++) {
+                const lower = samples[i];
+                const upper = samples[i + 1];
+                if (value >= lower.V && value <= upper.V) {
+                    const t = (value - lower.V) / (upper.V - lower.V);
+                    return lower.C + (upper.C - lower.C) * t;
+                }
+            }
+            return samples[samples.length - 1].C;
+        }
+
         // Compute pigment positions and colors from Munsell data
         pigmentsList.forEach(p => {
             const parsed = parseMunsell(p.munsell);
@@ -510,6 +545,72 @@ html_template = """<!DOCTYPE html>
         scene.add(pigmentsGroup);
         scene.add(mixGroup);
         scene.add(sampleLabelGroup);
+
+        const shellGeometry = new THREE.BufferGeometry();
+        const shellPositions = [];
+        const shellIndices = [];
+        const ringVertexIndices = [];
+        const hueCount = hues.length;
+        const bottomCenterIndex = 0;
+        const topCenterIndex = 1;
+        shellPositions.push(0, 0, 0);
+        shellPositions.push(0, 30, 0);
+
+        boundaryValues.forEach((value, valueIdx) => {
+            const ring = [];
+            for (let hueIdx = 0; hueIdx < hueCount; hueIdx++) {
+                const angle = (hueIdx / hueCount) * Math.PI * 2;
+                const radius = boundaryChroma(hueIdx, value) * 1.5;
+                const xPos = Math.cos(angle) * radius;
+                const yPos = value * 3;
+                const zPos = -Math.sin(angle) * radius;
+                ring.push(shellPositions.length / 3);
+                shellPositions.push(xPos, yPos, zPos);
+            }
+            ringVertexIndices.push(ring);
+        });
+
+        if (ringVertexIndices.length > 0) {
+            const firstRing = ringVertexIndices[0];
+            const lastRing = ringVertexIndices[ringVertexIndices.length - 1];
+            for (let hueIdx = 0; hueIdx < hueCount; hueIdx++) {
+                const nextHueIdx = (hueIdx + 1) % hueCount;
+                shellIndices.push(bottomCenterIndex, firstRing[hueIdx], firstRing[nextHueIdx]);
+                shellIndices.push(topCenterIndex, lastRing[nextHueIdx], lastRing[hueIdx]);
+            }
+
+            for (let valueIdx = 0; valueIdx < ringVertexIndices.length - 1; valueIdx++) {
+                const lowerRing = ringVertexIndices[valueIdx];
+                const upperRing = ringVertexIndices[valueIdx + 1];
+                for (let hueIdx = 0; hueIdx < hueCount; hueIdx++) {
+                    const nextHueIdx = (hueIdx + 1) % hueCount;
+                    const a = lowerRing[hueIdx];
+                    const b = lowerRing[nextHueIdx];
+                    const c = upperRing[hueIdx];
+                    const d = upperRing[nextHueIdx];
+                    shellIndices.push(a, c, b);
+                    shellIndices.push(b, c, d);
+                }
+            }
+
+            shellGeometry.setAttribute('position', new THREE.Float32BufferAttribute(shellPositions, 3));
+            shellGeometry.setIndex(shellIndices);
+            shellGeometry.computeVertexNormals();
+
+            const shellMaterial = new THREE.MeshStandardMaterial({
+                color: new THREE.Color(0xe8e8e8),
+                transparent: true,
+                opacity: 0.08,
+                roughness: 1.0,
+                metalness: 0.0,
+                side: THREE.DoubleSide,
+                depthWrite: false
+            });
+
+            const shellMesh = new THREE.Mesh(shellGeometry, shellMaterial);
+            shellMesh.renderOrder = -1;
+            solidGroup.add(shellMesh);
+        }
 
         const hueAnchors = [];
         const anchorData = [
