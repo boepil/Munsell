@@ -3238,7 +3238,7 @@
             { name: "Titanium White",              code: "PW6",    munsell: "N 10/0" },
             { name: "Carbon Black",                code: "PBk6",   munsell: "N 1/0" },
             { name: "Hansa Yellow",                code: "PY97",   munsell: "8.2YR 7/15.8" },
-            { name: "Cadmium Lemon",               code: "PY35",   munsell: "2.5Y 8/18" },
+            { name: "Lemon Yellow (Primary)",      code: "205",    munsell: "0.038GY 9.300/6.436" },
             { name: "Cadmium Yellow",              code: "PY35",   munsell: "6.0Y 9.1/20.9" },
             { name: "Yellow Ochre",                code: "PY43",   munsell: "2.5Y 6/6" },
             { name: "Raw Sienna",                  code: "PBr7",   munsell: "10YR 4.8/6.8" },
@@ -3358,7 +3358,7 @@
             if (!line) continue;
             const parts = line.split(',');
             if (parts.length < 6) continue;
-            const H = parts[0];
+            const H = parts[0].replace(/\.0([A-Z]+)$/, '$1');
             const V = parseFloat(parts[1]);
             const C = parseFloat(parts[2]);
             const x = parseFloat(parts[3]);
