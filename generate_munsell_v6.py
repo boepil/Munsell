@@ -1272,28 +1272,71 @@ html_template = """<!DOCTYPE html>
             }
             if (maxChroma > 0) for (let i = 0; i < chroma.length; i++) chroma[i] /= maxChroma;
 
+            // Local variance in grayscale to prefer regions with tonal structure
+            const variance = new Float32Array(w * h);
+            let maxVariance = 0;
+            for (let y = 2; y < h - 2; y++) {
+                for (let x = 2; x < w - 2; x++) {
+                    let sum = 0, sumSq = 0, count = 0;
+                    for (let dy = -2; dy <= 2; dy++) {
+                        for (let dx = -2; dx <= 2; dx++) {
+                            const idx = (y + dy) * w + (x + dx);
+                            const val = gray[idx];
+                            sum += val;
+                            sumSq += val * val;
+                            count++;
+                        }
+                    }
+                    const mean = sum / count;
+                    const varVal = Math.max(0, sumSq / count - mean * mean);
+                    variance[y * w + x] = varVal;
+                    if (varVal > maxVariance) maxVariance = varVal;
+                }
+            }
+            if (maxVariance > 0) for (let i = 0; i < variance.length; i++) variance[i] /= maxVariance;
+
             // Combined interest score
             const scores = new Float32Array(w * h);
-            for (let i = 0; i < scores.length; i++) scores[i] = 0.5 * edge[i] + 0.5 * chroma[i];
+            for (let i = 0; i < scores.length; i++) scores[i] = 0.35 * edge[i] + 0.30 * chroma[i] + 0.35 * variance[i];
 
-            // Grid clustering: 4x5 cells
-            const gridRows = 4, gridCols = 5;
+            // Grid clustering with non-max suppression
+            const gridRows = 6, gridCols = 8;
             const cellW = w / gridCols, cellH = h / gridRows;
             const selectedPoints = [];
+            const suppressionRadiusSq = 18 * 18;
+            function isTooClose(x, y, pts) {
+                for (const pt of pts) {
+                    const dx = pt.x - x;
+                    const dy = pt.y - y;
+                    if (dx * dx + dy * dy < suppressionRadiusSq) return true;
+                }
+                return false;
+            }
+
             for (let r = 0; r < gridRows; r++) {
                 for (let c = 0; c < gridCols; c++) {
                     const xStart = Math.floor(c * cellW), xEnd = Math.min(w, Math.floor((c+1)*cellW));
                     const yStart = Math.floor(r * cellH), yEnd = Math.min(h, Math.floor((r+1)*cellH));
-                    let bestX = -1, bestY = -1, maxScore = -1;
+                    const candidates = [];
                     for (let y = yStart; y < yEnd; y++) {
                         for (let x = xStart; x < xEnd; x++) {
                             const idx = y * w + x;
-                            if (scores[idx] > maxScore) { maxScore = scores[idx]; bestX = x; bestY = y; }
+                            candidates.push({ x, y, score: scores[idx] });
                         }
                     }
-                    if (bestX !== -1 && maxScore > 0.05) selectedPoints.push({ x: bestX, y: bestY, score: maxScore });
+                    candidates.sort((a, b) => b.score - a.score);
+                    let picked = 0;
+                    for (const candidate of candidates) {
+                        if (candidate.score <= 0.05) break;
+                        if (isTooClose(candidate.x, candidate.y, selectedPoints)) continue;
+                        selectedPoints.push(candidate);
+                        picked++;
+                        if (picked >= 2) break;
+                    }
                 }
             }
+
+            selectedPoints.sort((a, b) => b.score - a.score);
 
             // Mark matched voxels as highlighted and create label anchors
             console.log(`Auto-Sample: Found ${selectedPoints.length} candidate points`);
@@ -1361,19 +1404,54 @@ html_template = """<!DOCTYPE html>
         function computeRecoloredImage(srcData, achievableGamut, w, h) {
             const resultData = new Uint8ClampedArray(srcData.length);
             const errors = new Float32Array(w * h);
+            const blendCount = Math.min(6, achievableGamut.length);
+            const blendSigmaSq = 225;
             for (let i = 0; i < w * h; i++) {
                 const idx = i * 4;
                 const r = srcData[idx], g = srcData[idx+1], b = srcData[idx+2], a = srcData[idx+3];
                 const pixelLab = fastSRGBToLab(r, g, b);
-                let bestRGB = null, bestDist = Infinity;
+                const nearest = [];
                 for (let j = 0; j < achievableGamut.length; j++) {
                     const gc = achievableGamut[j];
                     const d = Math.pow(gc.lab[0]-pixelLab[0],2) + Math.pow(gc.lab[1]-pixelLab[1],2) + Math.pow(gc.lab[2]-pixelLab[2],2);
-                    if (d < bestDist) { bestDist = d; bestRGB = gc.rgb; }
+                    if (nearest.length < blendCount) {
+                        nearest.push({ d, rgb: gc.rgb });
+                        nearest.sort((left, right) => right.d - left.d);
+                    } else if (d < nearest[0].d) {
+                        nearest[0] = { d, rgb: gc.rgb };
+                        nearest.sort((left, right) => right.d - left.d);
+                    }
                 }
-                resultData[idx] = bestRGB[0]; resultData[idx+1] = bestRGB[1];
-                resultData[idx+2] = bestRGB[2]; resultData[idx+3] = a;
-                errors[i] = Math.sqrt(bestDist);
+                nearest.sort((left, right) => left.d - right.d);
+
+                let outR = 0, outG = 0, outB = 0, sumW = 0;
+                if (nearest.length === 0) {
+                    outR = r; outG = g; outB = b;
+                } else if (nearest[0].d < 1e-6) {
+                    outR = nearest[0].rgb[0];
+                    outG = nearest[0].rgb[1];
+                    outB = nearest[0].rgb[2];
+                } else {
+                    for (const candidate of nearest) {
+                        const weight = Math.exp(-candidate.d / (2 * blendSigmaSq));
+                        sumW += weight;
+                        outR += weight * candidate.rgb[0];
+                        outG += weight * candidate.rgb[1];
+                        outB += weight * candidate.rgb[2];
+                    }
+                    if (sumW > 0) {
+                        outR /= sumW; outG /= sumW; outB /= sumW;
+                    }
+                }
+
+                resultData[idx] = Math.round(outR); resultData[idx+1] = Math.round(outG);
+                resultData[idx+2] = Math.round(outB); resultData[idx+3] = a;
+                const blendedLab = sRGB_to_Lab(resultData[idx], resultData[idx+1], resultData[idx+2]);
+                errors[i] = Math.sqrt(
+                    Math.pow(blendedLab[0] - pixelLab[0], 2) +
+                    Math.pow(blendedLab[1] - pixelLab[1], 2) +
+                    Math.pow(blendedLab[2] - pixelLab[2], 2)
+                );
             }
             return { imageData: new ImageData(resultData, w, h), errors };
         }
