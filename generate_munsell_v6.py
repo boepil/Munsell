@@ -251,50 +251,50 @@ html_template = """<!DOCTYPE html>
         ];
 
         const pigmentsList = [
-            { name: "Titanium White",              code: "PW6",    munsell: "N 10/0" },
-            { name: "Carbon Black",                code: "PBk6",   munsell: "N 0/0" },
-            { name: "Hansa Yellow",                code: "PY97",   munsell: "8.2YR 7/15.8" },
-            { name: "Lemon Yellow (Primary)",      code: "205",    munsell: "0.038GY 9.300/6.436" },
-            { name: "Cadmium Yellow",              code: "PY35",   munsell: "7.566Y 9.226/13.545" },
-            { name: "Yellow Ochre",                code: "PY43",   munsell: "2.5Y 6/6" },
-            { name: "Raw Sienna",                  code: "PBr7",   munsell: "5Y 5/5" },
-            { name: "Cadmium Orange",              code: "PO20",   munsell: "5YR 5/5" },
-            { name: "Quinacridone Red",            code: "PR209",  munsell: "4R 4.8/18.0" },
-            { name: "Cadmium Red Deep",            code: "PR108",  munsell: "6.57R 4.94/16.95" },
-            { name: "Quinacridone Red Light",      code: "PR206/207", munsell: "5R 4.2/13" },
-            { name: "Alizarin Crimson",            code: "PR83",   munsell: "5RP 2.5/8" },
-            { name: "Venetian Red",                code: "PR101",  munsell: "5R 5/5" },
-            { name: "Burnt Sienna",                code: "PBr7",   munsell: "0.004YR 4.172/7.082" },
-            { name: "Burnt Umber",                 code: "PBr7",   munsell: "7.5YR 2.5/2" },
-            { name: "Raw Umber",                   code: "PBr7",   munsell: "9.219YR 5.983/3.643" },
-            { name: "Sepia",                       code: "mixture",munsell: "10YR 2/1" },
-            { name: "Payne's Grey",                code: "mixture",munsell: "5PB 2.2/1" },
-            { name: "Quinacridone Rose",           code: "PV19",   munsell: "5.289R 4.308/14.575" },
-            { name: "Quinacridone Magenta",        code: "PR122",  munsell: "10RP 2.8/13.5" },
-            { name: "Cobalt Violet",               code: "PV49",   munsell: "2RP 6.5/10.5" },
-            { name: "Ultramarine Violet",          code: "PV15",   munsell: "2.638P 4.439/10.888" },
-            { name: "Phthalo Green BS",            code: "PG7",    munsell: "2.5G 7/34" },
-            { name: "Viridian",                    code: "PG18",   munsell: "5BG 5/5" },
-            { name: "Chromium Oxide Green",        code: "PG17",   munsell: "5BG 5/5" },
-            { name: "Phthalo Green YS",            code: "PG36",   munsell: "10GY 8/34" },
-            { name: "Phthalo Turquoise",           code: "PB16",   munsell: "4.353B 4.414/9.557" },
-            { name: "Cerulean Blue",               code: "PB35",   munsell: "3.751PB 3.410/10.724" },
-            { name: "Prussian Blue",               code: "PB27",   munsell: "6.74PB 2.85/7.74" },
-            { name: "Phthalo Blue GS",             code: "PB15:3", munsell: "4.878PB 2.578/9.331" },
-            { name: "Cobalt Blue",                 code: "PB28",   munsell: "5B 5/5" },
-            { name: "Ultramarine Blue",            code: "PB29",   munsell: "5PB 5/5" },
+            { name: "Titanium White",              code: "PW6",    munsell: "N 9.5/" },
+            { name: "Carbon Black",                code: "PBk6",   munsell: "N 1.5/" },
+            { name: "Hansa Yellow",                code: "PY97",   munsell: "2.5Y 8.0/12.0" },
+            { name: "Lemon Yellow",                code: "mix",    munsell: "5Y 8.5/10.0" },
+            { name: "Cadmium Yellow",              code: "PY35",   munsell: "2.5Y 8.0/14.0" },
+            { name: "Yellow Ochre",                code: "PY43",   munsell: "10YR 6.5/6.0" },
+            { name: "Raw Sienna",                  code: "PBr7",   munsell: "7.5YR 5.5/5.0" },
+            { name: "Cadmium Orange",              code: "PO20",   munsell: "2.5YR 6.5/14.0" },
+            { name: "Quinacridone Red",            code: "PR209",  munsell: "2.5R 4.5/13.0" },
+            { name: "Cadmium Red Deep",            code: "PR108",  munsell: "7.5R 4.5/15.0" },
+            { name: "Quinacridone Red Light",      code: "PR206/207", munsell: "5R 5.0/14.0" },
+            { name: "Alizarin Crimson",            code: "PR83",   munsell: "5RP 3.0/9.0" },
+            { name: "Venetian Red",                code: "PR101",  munsell: "10R 4.5/10.0" },
+            { name: "Burnt Sienna",                code: "PBr7",   munsell: "2.5YR 4.0/8.0" },
+            { name: "Burnt Umber",                 code: "PBr7",   munsell: "5YR 3.0/4.0" },
+            { name: "Raw Umber",                   code: "PBr7",   munsell: "2.5Y 4.0/3.0" },
+            { name: "Sepia",                       code: "mixture",munsell: "10YR 2.5/2.0" },
+            { name: "Payne's Grey",                code: "mixture",munsell: "5PB 3.0/2.0" },
+            { name: "Quinacridone Rose",           code: "PV19",   munsell: "5RP 5.0/12.0" },
+            { name: "Quinacridone Magenta",        code: "PR122",  munsell: "5P 4.5/13.0" },
+            { name: "Cobalt Violet",               code: "PV49",   munsell: "7.5P 4.0/8.0" },
+            { name: "Ultramarine Violet",          code: "PV15",   munsell: "5P 3.5/9.0" },
+            { name: "Phthalo Green BS",            code: "PG7",    munsell: "2.5BG 4.0/10.0" },
+            { name: "Viridian",                    code: "PG18",   munsell: "10G 4.5/6.0" },
+            { name: "Chromium Oxide Green",        code: "PG17",   munsell: "5G 5.0/4.0" },
+            { name: "Phthalo Green YS",            code: "PG36",   munsell: "7.5GY 4.5/10.0" },
+            { name: "Phthalo Turquoise",           code: "PB16",   munsell: "5BG 5.0/9.0" },
+            { name: "Cerulean Blue",               code: "PB35",   munsell: "10B 6.0/8.0" },
+            { name: "Prussian Blue",               code: "PB27",   munsell: "2.5PB 2.5/8.0" },
+            { name: "Phthalo Blue GS",             code: "PB15:3", munsell: "2.5PB 3.5/12.0" },
+            { name: "Cobalt Blue",                 code: "PB28",   munsell: "5PB 4.5/9.0" },
+            { name: "Ultramarine Blue",            code: "PB29",   munsell: "5PB 3.5/11.0" },
         ];
 
         function parseMunsell(str) {
             const s = str.replace(/^≈/, '').trim();
             if (s.startsWith('N ')) {
-                const m = s.match(/^N\s+([\d.]+)\s*\/\s*([\d.]+)$/);
+                const m = s.match(/^N\s+([\d.]+)\s*\/\s*([\d.]*)$/);
                 if (!m) return null;
-                return { neutral: true, V: parseFloat(m[1]), C: parseFloat(m[2]) };
+                return { neutral: true, V: parseFloat(m[1]), C: parseFloat(m[2] || "0") };
             }
-            const m = s.match(/^([\d.]+)\s*([A-Z]+)\s+([\d.]+)\s*\/\s*([\d.]+)$/);
+            const m = s.match(/^([\d.]+)\s*([A-Z]+)\s+([\d.]+)\s*\/\s*([\d.]*)$/);
             if (!m) return null;
-            return { neutral: false, hueNum: parseFloat(m[1]), hueLetter: m[2], V: parseFloat(m[3]), C: parseFloat(m[4]) };
+            return { neutral: false, hueNum: parseFloat(m[1]), hueLetter: m[2], V: parseFloat(m[3]), C: parseFloat(m[4] || "0") };
         }
 
         const hueNames = ['R','YR','Y','GY','G','BG','B','PB','P','RP'];
