@@ -81,6 +81,15 @@ html_template = """<!DOCTYPE html>
             pointer-events: none;
             transition: opacity 0.2s;
         }
+        .optimal-axis-label {
+            position: fixed;
+            color: rgba(255, 255, 255, 0.9);
+            font: 12px sans-serif;
+            text-shadow: 0 1px 3px #000;
+            pointer-events: none;
+            transform: translate(6px, -50%);
+            white-space: nowrap;
+        }
         .pigment-label:hover {
             border-color: #fff;
         }
@@ -185,6 +194,9 @@ html_template = """<!DOCTYPE html>
             </label>
             <label style="font-weight: normal; cursor: pointer; display: flex; align-items: center; gap: 6px; margin-top: 5px;">
                 <input type="checkbox" id="toggle-munsell"> Show Munsell Solid
+            </label>
+            <label style="font-weight: normal; cursor: pointer; display: flex; align-items: center; gap: 6px; margin-top: 5px;">
+                <input type="checkbox" id="toggle-optimal" checked> Optimal Color Solid (MacAdam Limits)
             </label>
         </div>
         <!-- Image Sampling & Pigment-Constrained Palette Preview -->
@@ -881,10 +893,227 @@ html_template = """<!DOCTYPE html>
                 envMesh.visible = toggleEnvelope.checked;
             });
         }
-solidGroup.position.y = -15;
+        solidGroup.position.y = -15;
         pigmentsGroup.position.y = -15;
         mixGroup.position.y = -15;
         sampleLabelGroup.position.y = -15;
+
+        // ------------------------------------------------------------------
+        // Optimal Color Solid (Schrödinger / MacAdam limits)
+        // ------------------------------------------------------------------
+        // Independent continuous loft.  The pigment cubes and the natural
+        // envelope remain untouched; this layer shares only their scene
+        // origin, vertical Value scale, and hue-angle convention.
+        const optimalColorGroup = new THREE.Group();
+        optimalColorGroup.name = 'Optimal Color Solid (MacAdam Limits)';
+        solidGroup.add(optimalColorGroup);
+
+        const OPTIMAL_VALUE_SCALE = 3;
+        const OPTIMAL_HUE_SEGMENTS = 120;
+        const OPTIMAL_VALUE_RINGS = 40;
+        const OPTIMAL_CHROMA_SCALE = 1.5;
+        const optimalChromaProfile = [
+            [0.0, 0.0], [0.5, 5.0], [1.0, 11.0], [1.5, 18.0],
+            [2.0, 24.0], [2.5, 30.0], [3.0, 35.0], [3.5, 39.0],
+            [4.0, 42.0], [4.5, 44.0], [5.0, 45.0], [5.5, 44.0],
+            [6.0, 42.0], [6.5, 39.0], [7.0, 35.0], [7.5, 30.0],
+            [8.0, 25.0], [8.5, 20.0], [9.0, 14.0], [9.5, 7.0],
+            [10.0, 0.0]
+        ];
+
+        function optimalChromaAtValue(value) {
+            const v = Math.max(0, Math.min(10, value));
+            for (let i = 0; i < optimalChromaProfile.length - 1; i++) {
+                const lower = optimalChromaProfile[i];
+                const upper = optimalChromaProfile[i + 1];
+                if (v >= lower[0] && v <= upper[0]) {
+                    const t = (v - lower[0]) / (upper[0] - lower[0]);
+                    const smoothT = t * t * (3 - 2 * t);
+                    return (lower[1] + (upper[1] - lower[1]) * smoothT) * OPTIMAL_CHROMA_SCALE;
+                }
+            }
+            return 0;
+        }
+
+        function optimalSurfaceColor(value, hueFraction) {
+            const distanceToPoint = Math.min(value, 10 - value);
+            const saturation = Math.min(1, Math.max(0, distanceToPoint / 1.6));
+            const color = new THREE.Color().setHSL(hueFraction, 0.92 * saturation, 0.52);
+            color.lerp(new THREE.Color(0x9299a1), 1 - saturation);
+            return color;
+        }
+
+        const optimalPositions = [0, 0, 0];
+        const optimalColors = [0.57, 0.60, 0.64];
+        const optimalRingIndices = [];
+        const optimalRingValues = [];
+        for (let ringIndex = 1; ringIndex < OPTIMAL_VALUE_RINGS; ringIndex++) {
+            const value = (ringIndex / OPTIMAL_VALUE_RINGS) * 10;
+            const radius = optimalChromaAtValue(value);
+            const ring = [];
+            for (let hueIndex = 0; hueIndex < OPTIMAL_HUE_SEGMENTS; hueIndex++) {
+                const angle = (hueIndex / OPTIMAL_HUE_SEGMENTS) * Math.PI * 2;
+                const color = optimalSurfaceColor(value, hueIndex / OPTIMAL_HUE_SEGMENTS);
+                ring.push(optimalPositions.length / 3);
+                optimalPositions.push(Math.cos(angle) * radius, value * OPTIMAL_VALUE_SCALE, -Math.sin(angle) * radius);
+                optimalColors.push(color.r, color.g, color.b);
+            }
+            optimalRingIndices.push(ring);
+            optimalRingValues.push(value);
+        }
+
+        const optimalFaces = [];
+        const optimalAllIndices = [];
+        function addOptimalFace(a, b, c, lowerValue, upperValue, hueIndex) {
+            optimalFaces.push({ indices: [a, b, c], lowerValue, upperValue, hueIndex });
+            optimalAllIndices.push(a, b, c);
+        }
+        const firstOptimalRing = optimalRingIndices[0];
+        for (let hueIndex = 0; hueIndex < OPTIMAL_HUE_SEGMENTS; hueIndex++) {
+            const nextHueIndex = (hueIndex + 1) % OPTIMAL_HUE_SEGMENTS;
+            addOptimalFace(0, firstOptimalRing[hueIndex], firstOptimalRing[nextHueIndex], 0, optimalRingValues[0], hueIndex);
+        }
+        for (let ringIndex = 0; ringIndex < optimalRingIndices.length - 1; ringIndex++) {
+            const lowerRing = optimalRingIndices[ringIndex];
+            const upperRing = optimalRingIndices[ringIndex + 1];
+            const lowerValue = optimalRingValues[ringIndex];
+            const upperValue = optimalRingValues[ringIndex + 1];
+            for (let hueIndex = 0; hueIndex < OPTIMAL_HUE_SEGMENTS; hueIndex++) {
+                const nextHueIndex = (hueIndex + 1) % OPTIMAL_HUE_SEGMENTS;
+                const a = lowerRing[hueIndex];
+                const b = lowerRing[nextHueIndex];
+                const c = upperRing[hueIndex];
+                const d = upperRing[nextHueIndex];
+                addOptimalFace(a, b, c, lowerValue, upperValue, hueIndex);
+                addOptimalFace(b, d, c, lowerValue, upperValue, hueIndex);
+            }
+        }
+        const topOptimalIndex = optimalPositions.length / 3;
+        optimalPositions.push(0, 10 * OPTIMAL_VALUE_SCALE, 0);
+        optimalColors.push(0.57, 0.60, 0.64);
+        const lastOptimalRing = optimalRingIndices[optimalRingIndices.length - 1];
+        for (let hueIndex = 0; hueIndex < OPTIMAL_HUE_SEGMENTS; hueIndex++) {
+            const nextHueIndex = (hueIndex + 1) % OPTIMAL_HUE_SEGMENTS;
+            addOptimalFace(topOptimalIndex, lastOptimalRing[hueIndex], lastOptimalRing[nextHueIndex], optimalRingValues[optimalRingValues.length - 1], 10, hueIndex);
+        }
+
+        const optimalGeometry = new THREE.BufferGeometry();
+        optimalGeometry.setAttribute('position', new THREE.Float32BufferAttribute(optimalPositions, 3));
+        optimalGeometry.setAttribute('color', new THREE.Float32BufferAttribute(optimalColors, 3));
+        optimalGeometry.setIndex(optimalAllIndices);
+        optimalGeometry.computeVertexNormals();
+        const optimalMaterial = new THREE.MeshStandardMaterial({
+            vertexColors: true,
+            transparent: true,
+            opacity: 0.36,
+            roughness: 0.86,
+            metalness: 0.0,
+            side: THREE.DoubleSide,
+            depthWrite: false
+        });
+        const optimalSurface = new THREE.Mesh(optimalGeometry, optimalMaterial);
+        optimalSurface.name = 'Optimal Color Surface';
+        optimalColorGroup.add(optimalSurface);
+
+        const optimalGridGroup = new THREE.Group();
+        const optimalGridMaterial = new THREE.LineBasicMaterial({
+            color: 0xe8edf2,
+            transparent: true,
+            opacity: 0.24,
+            depthWrite: false,
+            toneMapped: false
+        });
+        for (let value = 0.5; value < 10; value += 0.5) {
+            const radius = optimalChromaAtValue(value);
+            const points = [];
+            for (let hueIndex = 0; hueIndex <= OPTIMAL_HUE_SEGMENTS; hueIndex++) {
+                const angle = (hueIndex / OPTIMAL_HUE_SEGMENTS) * Math.PI * 2;
+                points.push(new THREE.Vector3(Math.cos(angle) * radius, value * OPTIMAL_VALUE_SCALE, -Math.sin(angle) * radius));
+            }
+            const ring = new THREE.Line(new THREE.BufferGeometry().setFromPoints(points), optimalGridMaterial);
+            ring.userData.value = value;
+            optimalGridGroup.add(ring);
+        }
+        for (let hueIndex = 0; hueIndex < hues.length; hueIndex++) {
+            const angle = (hueIndex / hues.length) * Math.PI * 2;
+            const points = [];
+            for (let sample = 0; sample <= OPTIMAL_VALUE_RINGS; sample++) {
+                const value = (sample / OPTIMAL_VALUE_RINGS) * 10;
+                const radius = optimalChromaAtValue(value);
+                points.push(new THREE.Vector3(Math.cos(angle) * radius, value * OPTIMAL_VALUE_SCALE, -Math.sin(angle) * radius));
+            }
+            const radial = new THREE.Line(new THREE.BufferGeometry().setFromPoints(points), optimalGridMaterial);
+            radial.userData.hueIndex = hueIndex;
+            optimalGridGroup.add(radial);
+        }
+        optimalGridGroup.renderOrder = 1;
+        optimalColorGroup.add(optimalGridGroup);
+
+        const optimalAxisGroup = new THREE.Group();
+        const optimalAxisMaterial = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.72, depthWrite: false, toneMapped: false });
+        optimalAxisGroup.add(new THREE.Line(
+            new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 10 * OPTIMAL_VALUE_SCALE, 0)]),
+            optimalAxisMaterial
+        ));
+        const tickPositions = [];
+        for (let value = 0; value <= 10; value++) {
+            const y = value * OPTIMAL_VALUE_SCALE;
+            tickPositions.push(-0.65, y, 0, 0.65, y, 0);
+        }
+        const tickGeometry = new THREE.BufferGeometry();
+        tickGeometry.setAttribute('position', new THREE.Float32BufferAttribute(tickPositions, 3));
+        optimalAxisGroup.add(new THREE.LineSegments(tickGeometry, optimalAxisMaterial));
+        optimalAxisGroup.renderOrder = 2;
+        optimalColorGroup.add(optimalAxisGroup);
+
+        const optimalAxisLabels = document.createElement('div');
+        optimalAxisLabels.id = 'optimal-axis-labels';
+        optimalAxisLabels.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:5;';
+        document.body.appendChild(optimalAxisLabels);
+        const optimalLabelNodes = [];
+        for (let value = 0; value <= 10; value++) {
+            const label = document.createElement('span');
+            label.className = 'optimal-axis-label';
+            label.textContent = String(value);
+            optimalAxisLabels.appendChild(label);
+            optimalLabelNodes.push({ value, node: label });
+        }
+        const optimalAxisTitle = document.createElement('span');
+        optimalAxisTitle.className = 'optimal-axis-label';
+        optimalAxisTitle.textContent = 'Value (V)';
+        optimalAxisLabels.appendChild(optimalAxisTitle);
+
+        function updateOptimalAxisLabels(show) {
+            solidGroup.updateMatrixWorld(true);
+            optimalLabelNodes.forEach(entry => {
+                const point = new THREE.Vector3(0, entry.value * OPTIMAL_VALUE_SCALE, 0).applyMatrix4(solidGroup.matrixWorld).project(camera);
+                const visible = show && point.z >= -1 && point.z <= 1;
+                entry.node.style.display = visible ? 'block' : 'none';
+                entry.node.style.left = `${(point.x * 0.5 + 0.5) * window.innerWidth}px`;
+                entry.node.style.top = `${(-point.y * 0.5 + 0.5) * window.innerHeight}px`;
+            });
+            const titlePoint = new THREE.Vector3(0, 10 * OPTIMAL_VALUE_SCALE + 1, 0).applyMatrix4(solidGroup.matrixWorld).project(camera);
+            optimalAxisTitle.style.display = show ? 'block' : 'none';
+            optimalAxisTitle.style.left = `${(titlePoint.x * 0.5 + 0.5) * window.innerWidth}px`;
+            optimalAxisTitle.style.top = `${(-titlePoint.y * 0.5 + 0.5) * window.innerHeight}px`;
+        }
+
+        function updateOptimalVisibility(cutoffValue, show) {
+            optimalColorGroup.visible = show;
+            if (!show) {
+                updateOptimalAxisLabels(false);
+                return;
+            }
+            const visibleIndices = [];
+            optimalFaces.forEach(face => {
+                if (face.lowerValue <= cutoffValue) visibleIndices.push(...face.indices);
+            });
+            optimalGeometry.setIndex(visibleIndices);
+            optimalGridGroup.children.forEach(child => {
+                if (child.userData.value !== undefined) child.visible = child.userData.value <= cutoffValue;
+            });
+            updateOptimalAxisLabels(true);
+        }
 
         // --- Pigment Mixing Logic ---
         const mixMaterial = new THREE.ShaderMaterial({
@@ -1820,10 +2049,16 @@ solidGroup.position.y = -15;
         });
 
         const toggleMunsell = document.getElementById('toggle-munsell');
+        const toggleOptimal = document.getElementById('toggle-optimal');
         if (toggleMunsell) {
             toggleMunsell.addEventListener('change', () => {
                 updateVoxels();
                 updatePigmentBoxVisibility();
+            });
+        }
+        if (toggleOptimal) {
+            toggleOptimal.addEventListener('change', () => {
+                updateOptimalVisibility(parseInt(valueSlider.value), toggleOptimal.checked);
             });
         }
 
@@ -1847,6 +2082,8 @@ solidGroup.position.y = -15;
                 cube.material.depthWrite = (opacity > 0.95);
                 cube.material.opacity = opacity;
             });
+
+            updateOptimalVisibility(cutoffValue, toggleOptimal ? toggleOptimal.checked : true);
 
             hueAnchors.forEach(div => {
                 div.style.opacity = showMunsell ? baseOpacity : 0;
