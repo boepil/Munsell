@@ -179,6 +179,15 @@ html_template = """<!DOCTYPE html>
             <input type="range" id="transparency-slider" min="0" max="100" step="1" value="0">
         </div>
         
+        <div style="margin-bottom: 15px;">
+            <label style="font-weight: normal; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+                <input type="checkbox" id="toggle-envelope" checked> Show Natural Envelope
+            </label>
+            <label style="font-weight: normal; cursor: pointer; display: flex; align-items: center; gap: 6px; margin-top: 5px;">
+                <input type="checkbox" id="toggle-munsell"> Show Munsell Solid
+            </label>
+        </div>
+        
         <!-- Image Sampling & Pigment-Constrained Palette Preview -->
         <hr style="border: 0; border-top: 1px solid #444; margin: 15px 0;">
         <div id="image-panel-toggle" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: bold; margin-bottom: 10px; user-select: none;">
@@ -236,6 +245,13 @@ html_template = """<!DOCTYPE html>
         import { ConvexGeometry } from 'three/addons/geometries/ConvexGeometry.js';
 
         const csvData = `{{CSV_DATA}}`;
+        const naturalData = `{{NATURAL_DATA}}`;
+        let naturalLights = [];
+        try {
+            naturalLights = JSON.parse(naturalData);
+        } catch (e) {
+            console.error("No natural light data found");
+        }
 
         const hues = [
             '2.5R', '5R', '7.5R', '10R', 
@@ -546,71 +562,118 @@ html_template = """<!DOCTYPE html>
         scene.add(mixGroup);
         scene.add(sampleLabelGroup);
 
-        const shellGeometry = new THREE.BufferGeometry();
-        const shellPositions = [];
-        const shellIndices = [];
-        const ringVertexIndices = [];
-        const hueCount = hues.length;
-        const bottomCenterIndex = 0;
-        const topCenterIndex = 1;
-        shellPositions.push(0, 0, 0);
-        shellPositions.push(0, 30, 0);
-
-        boundaryValues.forEach((value, valueIdx) => {
-            const ring = [];
-            for (let hueIdx = 0; hueIdx < hueCount; hueIdx++) {
-                const angle = (hueIdx / hueCount) * Math.PI * 2;
-                const radius = boundaryChroma(hueIdx, value) * 1.5;
-                const xPos = Math.cos(angle) * radius;
-                const yPos = value * 3;
-                const zPos = -Math.sin(angle) * radius;
-                ring.push(shellPositions.length / 3);
-                shellPositions.push(xPos, yPos, zPos);
+        // Build Natural Light Envelope Shell
+        const maxC = Array.from({length: 12}, () => Array(40).fill(0));
+        naturalLights.forEach(l => {
+            if (l.V < 0.1 || l.C < 0.1) return;
+            const v_int = Math.round(l.V);
+            const h_int = Math.round(l.hIndex) % 40;
+            if (v_int >= 1 && v_int <= 10) {
+                maxC[v_int][h_int] = Math.max(maxC[v_int][h_int], l.C);
             }
-            ringVertexIndices.push(ring);
         });
 
-        if (ringVertexIndices.length > 0) {
-            const firstRing = ringVertexIndices[0];
-            const lastRing = ringVertexIndices[ringVertexIndices.length - 1];
-            for (let hueIdx = 0; hueIdx < hueCount; hueIdx++) {
-                const nextHueIdx = (hueIdx + 1) % hueCount;
-                shellIndices.push(bottomCenterIndex, firstRing[hueIdx], firstRing[nextHueIdx]);
-                shellIndices.push(topCenterIndex, lastRing[nextHueIdx], lastRing[hueIdx]);
-            }
-
-            for (let valueIdx = 0; valueIdx < ringVertexIndices.length - 1; valueIdx++) {
-                const lowerRing = ringVertexIndices[valueIdx];
-                const upperRing = ringVertexIndices[valueIdx + 1];
-                for (let hueIdx = 0; hueIdx < hueCount; hueIdx++) {
-                    const nextHueIdx = (hueIdx + 1) % hueCount;
-                    const a = lowerRing[hueIdx];
-                    const b = lowerRing[nextHueIdx];
-                    const c = upperRing[hueIdx];
-                    const d = upperRing[nextHueIdx];
-                    shellIndices.push(a, c, b);
-                    shellIndices.push(b, c, d);
+        // Also incorporate boundaryChroma data into maxC
+        for (let v = 1; v <= 10; v++) {
+            for (let h = 0; h < 40; h++) {
+                const bc = boundaryChroma(h, v);
+                if (bc > 0) {
+                    maxC[v][h] = Math.max(maxC[v][h], bc);
                 }
             }
-
-            shellGeometry.setAttribute('position', new THREE.Float32BufferAttribute(shellPositions, 3));
-            shellGeometry.setIndex(shellIndices);
-            shellGeometry.computeVertexNormals();
-
-            const shellMaterial = new THREE.MeshStandardMaterial({
-                color: new THREE.Color(0xe8e8e8),
-                transparent: true,
-                opacity: 0.08,
-                roughness: 1.0,
-                metalness: 0.0,
-                side: THREE.DoubleSide,
-                depthWrite: false
-            });
-
-            const shellMesh = new THREE.Mesh(shellGeometry, shellMaterial);
-            shellMesh.renderOrder = -1;
-            solidGroup.add(shellMesh);
         }
+
+        // Gap filling per V level
+        for (let v = 1; v <= 10; v++) {
+            const nonEmpty = [];
+            for (let h = 0; h < 40; h++) if (maxC[v][h] > 0) nonEmpty.push(h);
+            if (nonEmpty.length === 0 || nonEmpty.length === 40) continue;
+
+            for (let h = 0; h < 40; h++) {
+                if (maxC[v][h] === 0) {
+                    let left = h, right = h;
+                    let leftDist = 0, rightDist = 0;
+                    while (maxC[v][left] === 0) { left = (left - 1 + 40) % 40; leftDist++; }
+                    while (maxC[v][right] === 0) { right = (right + 1) % 40; rightDist++; }
+                    maxC[v][h] = (maxC[v][left] * rightDist + maxC[v][right] * leftDist) / (leftDist + rightDist);
+                }
+            }
+        }
+
+        // Extrapolate empty V levels
+        let minV = 1, maxV = 10;
+        while (minV <= 10 && maxC[minV].every(c => c === 0)) minV++;
+        while (maxV >= 1 && maxC[maxV].every(c => c === 0)) maxV--;
+        if (minV <= maxV) {
+            for (let v = 1; v < minV; v++) {
+                for (let h = 0; h < 40; h++) maxC[v][h] = maxC[minV][h] * (v / minV);
+            }
+            for (let v = maxV + 1; v <= 10; v++) {
+                for (let h = 0; h < 40; h++) maxC[v][h] = maxC[maxV][h] * ((11 - v) / (11 - maxV));
+            }
+        }
+
+        // Smoothing across H
+        const smoothedC = Array.from({length: 12}, () => Array(40).fill(0));
+        for (let v = 1; v <= 10; v++) {
+            for (let h = 0; h < 40; h++) {
+                let sum = 0;
+                for (let i = -2; i <= 2; i++) sum += maxC[v][(h + i + 40) % 40];
+                smoothedC[v][h] = sum / 5;
+                const pigmentMax = boundaryChroma(h, v);
+                smoothedC[v][h] = Math.max(smoothedC[v][h], pigmentMax + 2.0);
+            }
+        }
+
+        function getEnvelopeC(V, H) {
+            if (V <= 0 || V >= 11) return 0;
+            const v_lower = Math.floor(V);
+            const v_upper = Math.ceil(V);
+            const t = V - v_lower;
+            if (v_lower === v_upper) return smoothedC[v_lower][H];
+            return smoothedC[v_lower][H] * (1 - t) + smoothedC[v_upper][H] * t;
+        }
+
+        const envPositions = [];
+        for (let v_grid = 0; v_grid <= 10; v_grid++) {
+            const V = v_grid + 0.5;
+            for (let h_grid = 0; h_grid <= 40; h_grid++) {
+                const H = h_grid % 40;
+                const radius = getEnvelopeC(V, H) * 1.5;
+                const angle = (h_grid / 40.0) * Math.PI * 2;
+                envPositions.push(Math.cos(angle) * radius, V * 3, -Math.sin(angle) * radius);
+            }
+        }
+
+        const envQuads = [];
+        for (let v_int = 1; v_int <= 10; v_int++) {
+            const v_grid = v_int - 1;
+            for (let h_int = 0; h_int < 40; h_int++) {
+                const A = v_grid * 41 + h_int;
+                const B = v_grid * 41 + (h_int + 1);
+                const C = (v_grid + 1) * 41 + h_int;
+                const D = (v_grid + 1) * 41 + (h_int + 1);
+                envQuads.push({ V: v_int, H: h_int, indices: [A, B, C, B, D, C] });
+            }
+        }
+
+        const envGeometry = new THREE.BufferGeometry();
+        envGeometry.setAttribute('position', new THREE.Float32BufferAttribute(envPositions, 3));
+        const initialIndices = [];
+        envQuads.forEach(q => initialIndices.push(...q.indices));
+        envGeometry.setIndex(initialIndices);
+        envGeometry.computeVertexNormals();
+
+        const envMaterial = new THREE.MeshStandardMaterial({
+            color: 0xcccccc,
+            transparent: true,
+            opacity: 0.15,
+            side: THREE.DoubleSide,
+            depthWrite: false
+        });
+        const envMesh = new THREE.Mesh(envGeometry, envMaterial);
+        envMesh.userData.isEnvelope = true;
+        solidGroup.add(envMesh);
 
         const hueAnchors = [];
         const anchorData = [
@@ -1645,12 +1708,19 @@ html_template = """<!DOCTYPE html>
 
         let hideUnpinned = false;
         function updatePigmentBoxVisibility() {
+            const showMunsell = toggleMunsell ? toggleMunsell.checked : true;
             pigmentBoxes.forEach(box => {
+                if (!showMunsell) {
+                    box.visible = false;
+                    box.userData.labelObj.visible = false;
+                    return;
+                }
                 if (hideUnpinned) {
                     box.visible = box.userData.state.pinned;
                 } else {
                     box.visible = true;
                 }
+                box.userData.updateVisibility();
             });
         }
 
@@ -1668,6 +1738,23 @@ html_template = """<!DOCTYPE html>
             updatePigmentBoxVisibility();
         });
 
+        // Envelope toggle
+        const toggleEnvelope = document.getElementById('toggle-envelope');
+        if (toggleEnvelope) {
+            toggleEnvelope.addEventListener('change', () => {
+                envMesh.visible = toggleEnvelope.checked;
+            });
+        }
+
+        // Munsell solid toggle
+        const toggleMunsell = document.getElementById('toggle-munsell');
+        if (toggleMunsell) {
+            toggleMunsell.addEventListener('change', () => {
+                updateVoxels();
+                updatePigmentBoxVisibility();
+            });
+        }
+
         const highlightToggleBtn = document.getElementById('highlight-toggle-btn');
         highlightToggleBtn.addEventListener('click', () => {
             highlightMode = !highlightMode;
@@ -1680,6 +1767,7 @@ html_template = """<!DOCTYPE html>
             const transparency = parseInt(transparencySlider.value) / 100.0;
             const baseOpacity = 1.0 - transparency;
             const samplesExist = highlightedVoxelIndices.size > 0;
+            const showMunsell = toggleMunsell ? toggleMunsell.checked : true;
             
             if (highlightMode) {
                 console.log(`Updating voxels (Highlight Mode ON): samplesExist=${samplesExist}, count=${highlightedVoxelIndices.size}`);
@@ -1690,13 +1778,13 @@ html_template = """<!DOCTYPE html>
                 const highlightMultiplier = (highlightMode && samplesExist) ? 0.2 : 1.0;
                 const opacity = baseOpacity * highlightMultiplier;
                 
-                cube.visible = visibleByValue && opacity > 0;
+                cube.visible = visibleByValue && opacity > 0 && showMunsell;
                 cube.material.depthWrite = (opacity > 0.95);
                 cube.material.opacity = opacity;
             });
 
             hueAnchors.forEach(div => {
-                div.style.opacity = baseOpacity;
+                div.style.opacity = showMunsell ? baseOpacity : 0;
             });
         }
 
@@ -1746,7 +1834,13 @@ html_template = """<!DOCTYPE html>
 with open('munsell_3-3.csv', 'r', encoding='utf-8') as f:
     csv_data = f.read()
 
-final_html = html_template.replace('{{CSV_DATA}}', csv_data)
+try:
+    with open('natural_lights.json', 'r', encoding='utf-8') as f:
+        natural_data = f.read()
+except FileNotFoundError:
+    natural_data = "[]"
+
+final_html = html_template.replace('{{CSV_DATA}}', csv_data).replace('{{NATURAL_DATA}}', natural_data)
 
 with open('index.html', 'w', encoding='utf-8') as f:
     f.write(final_html)
